@@ -1,0 +1,16 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+SQLAlchemy==2.0.36
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.3.0
+python-dateutil==2.9.0.post0
+httpx==0.28.1
+beautifulsoup4==4.12.3
+# Optional, only needed when INGEST_PUBLISHED_RESPONSES uses the browser fetcher:
+# playwright==1.49.1
+# Optional, only needed for FOI_RETRIEVAL_PROVIDER=semantic (offline embeddings):
+# fastembed==0.8.0
+# numpy==2.4.6
+# Dev/test:
+pytest==8.3.4

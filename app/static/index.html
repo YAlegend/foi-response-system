@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FOI Case Management — Hertfordshire County Council</title>
+<style>
+  :root{
+    --navy:#0f3d57; --navy2:#15506f; --blue:#1d6fb8; --amber:#b45309;
+    --purple:#7c3aed; --green:#15803d; --grey:#475569; --line:#e2e8f0;
+    --bg:#f1f5f9; --card:#ffffff; --ink:#0f172a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between}
+  header h1{font-size:18px;margin:0;font-weight:700}
+  header .sub{font-size:12px;color:#bfdbef}
+  .wrap{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px;max-width:1400px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--grey);margin:0 0 12px}
+  label{display:block;font-size:12px;color:var(--grey);margin:8px 0 4px}
+  input,textarea,select{width:100%;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;background:#fff}
+  textarea{resize:vertical;min-height:84px}
+  button{cursor:pointer;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;color:#fff;background:var(--blue)}
+  button.secondary{background:#64748b}
+  button.green{background:var(--green)} button.amber{background:var(--amber)}
+  button.purple{background:var(--purple)} button.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .queue{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto}
+  .qitem{border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;background:#fff}
+  .qitem:hover{border-color:var(--blue)}
+  .qitem.active{border-color:var(--blue);box-shadow:0 0 0 2px rgba(29,111,184,.15)}
+  .qitem .ref{font-weight:700;font-size:13px}
+  .qitem .meta{font-size:11px;color:var(--grey);margin-top:2px}
+  .flag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;color:#fff}
+  .flag.green{background:var(--green)} .flag.amber{background:#d97706}
+  .flag.red{background:#dc2626} .flag.breach{background:#7f1d1d}
+  .tracker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .step{font-size:11px;padding:5px 9px;border-radius:999px;background:#eef2f7;color:var(--grey);border:1px solid var(--line)}
+  .step.done{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+  .step.current{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:4px 10px;font-size:13px;margin-bottom:12px}
+  .kv .k{color:var(--grey)}
+  .letter{white-space:pre-wrap;font-family:"SFMono-Regular",Consolas,monospace;font-size:12.5px;line-height:1.5;background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:16px;max-height:46vh;overflow:auto}
+  .timeline{list-style:none;margin:0;padding:0;font-size:12px}
+  .timeline li{padding:6px 0;border-bottom:1px dashed var(--line)}
+  .timeline .when{color:var(--grey)}
+  .checks{font-size:12.5px;margin:8px 0}
+  .checks .ok{color:#166534} .checks .bad{color:#b91c1c}
+  .empty{color:var(--grey);font-size:13px;padding:30px 10px;text-align:center}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .pill{font-size:11px;background:#eef2f7;border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--grey)}
+  .note{font-size:11px;color:var(--grey);margin-top:6px}
+  .cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  button.small{padding:6px 10px;font-size:12px}
+  .count{display:inline-flex;min-width:18px;height:18px;padding:0 5px;align-items:center;justify-content:center;
+    background:var(--blue);color:#fff;border-radius:999px;font-size:11px;font-weight:700;vertical-align:middle;margin-left:4px}
+  summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--navy)}
+  .inbox{display:flex;flex-direction:column;gap:8px;max-height:44vh;overflow:auto;margin-top:8px}
+  .msg{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer}
+  .msg:hover{border-color:var(--blue)}
+  .msg.imported,.msg.dismissed{opacity:.6;cursor:default}
+  .msg .subj{font-weight:700;font-size:13px;line-height:1.3}
+  .msg .from{font-size:11px;color:var(--grey);margin-top:2px}
+  .msg .snippet{font-size:12px;color:#334155;margin-top:6px;white-space:pre-wrap}
+  .msg .full{font-size:12px;color:#334155;margin-top:6px;white-space:pre-wrap;
+    background:#fbfcfe;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:200px;overflow:auto}
+  .msg .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .msg select{width:auto;padding:5px 8px;font-size:12px}
+  .mflag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;color:#fff}
+  .mflag.new{background:var(--blue)} .mflag.imported{background:var(--green)} .mflag.dismissed{background:#94a3b8} .mflag.linked{background:var(--purple)}
+  .msg .thread-hint{font-size:11px;color:var(--purple);margin-top:8px;line-height:1.4}
+  #toast{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:50}
+  #toast .t{background:var(--navy);color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;
+    box-shadow:0 6px 20px rgba(15,61,87,.25);opacity:.97}
+  .userbox{display:flex;align-items:center;gap:10px;font-size:12px;color:#bfdbef}
+  .userbox b{color:#fff}
+  .rolechip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+    border-radius:999px;padding:2px 9px;font-size:11px;color:#fff}
+  header button{padding:6px 12px;font-size:12px;background:rgba(255,255,255,.16)}
+  .needs{font-size:12px;color:var(--grey);font-style:italic;margin-top:8px}
+  .banner{padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;font-weight:600}
+  .banner.pause{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+  .banner.review{background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe}
+  .pill.paused{background:#fef3c7;color:#92400e;border-color:#fde68a}
+  #overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;
+    justify-content:center;z-index:100}
+  #overlay .login{background:#fff;border-radius:14px;padding:26px 24px;width:340px;
+    box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  #overlay h2{margin:0 0 4px;font-size:18px;color:var(--navy);text-transform:none;letter-spacing:0}
+  #overlay .sub{font-size:12px;color:var(--grey);margin-bottom:14px}
+  #overlay .err{color:#b91c1c;font-size:12px;min-height:16px;margin-top:6px}
+  #overlay .hint{font-size:11px;color:var(--grey);margin-top:12px;line-height:1.5;
+    border-top:1px solid var(--line);padding-top:10px}
+  /* Dashboard */
+  .dash{max-width:1400px;margin:0 auto;padding:18px 18px 0}
+  .dash-h{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--grey);margin:0 0 10px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .cards{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+  .metric{flex:1 1 120px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer}
+  .metric:hover{border-color:var(--blue)}
+  .metric.active{box-shadow:0 0 0 2px rgba(29,111,184,.25)}
+  .metric .m-num{font-size:26px;font-weight:800;color:var(--navy);line-height:1}
+  .metric .m-label{font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.4px;margin-top:6px}
+  .metric.breach{background:#fef2f2;border-color:#fecaca} .metric.breach .m-num{color:#b91c1c}
+  .metric.due{background:#fffbeb;border-color:#fde68a} .metric.due .m-num{color:#b45309}
+  .metric.paused{background:#fef3c7;border-color:#fde68a} .metric.paused .m-num{color:#92400e}
+  .metric.closed .m-num{color:var(--green)}
+  .pipeline{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+  .pnode{flex:1 1 0;min-width:96px;border:1px solid var(--line);border-radius:10px;padding:18px 8px 10px;
+    background:#fff;cursor:pointer;text-align:center;position:relative}
+  .pnode:hover{border-color:var(--blue)}
+  .pnode.active{border-color:var(--blue);box-shadow:0 0 0 2px rgba(29,111,184,.15);background:#f0f7ff}
+  .pnode .pn-num{position:absolute;top:5px;left:7px;font-size:9px;color:#94a3b8;font-weight:700}
+  .pnode .pn-count{font-size:22px;font-weight:800;color:var(--navy)}
+  .pnode.zero .pn-count{color:#cbd5e1}
+  .pnode .pn-label{font-size:10px;color:var(--grey);text-transform:uppercase;letter-spacing:.3px;line-height:1.25;margin-top:4px}
+  /* Flowchart */
+  .fc-wrap{overflow-x:auto}
+  .fc-wrap svg{min-width:760px;width:100%;height:auto;display:block}
+  .fc-node{cursor:pointer}
+  .fc-node rect{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;transition:stroke .1s}
+  .fc-node:hover rect{stroke:var(--blue)}
+  .fc-node.active rect{stroke:var(--blue);stroke-width:2.5;fill:#f0f7ff}
+  .fc-node.zero rect{stroke:#e8edf3}
+  .fc-node.off rect{stroke-dasharray:4 3}
+  .fc-label{font:600 10px "Segoe UI",system-ui,sans-serif;fill:var(--grey)}
+  .fc-count{font:800 15px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
+  .fc-node.zero .fc-count{fill:#cbd5e1}
+  .fc-node.active .fc-count{fill:var(--blue)}
+  .fc-edge{fill:none;stroke:#94a3b8;stroke-width:1.6}
+  .fc-edge.loop{stroke:#cbd5e1;stroke-width:1.4;stroke-dasharray:5 4}
+  .fc-elabel{font:600 8.5px "Segoe UI",system-ui,sans-serif;fill:#94a3b8}
+  .fc-legend{font-size:11px;color:var(--grey);margin-top:6px}
+  .offpipe{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .offchip{cursor:pointer;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;border:1px solid}
+  .offchip.clar{background:#fffbeb;color:#92400e;border-color:#fde68a}
+  .offchip.rev{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}
+  .offchip.active{box-shadow:0 0 0 2px rgba(124,58,237,.2)}
+  .dl-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .dl-item{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 10px;
+    border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;margin-bottom:6px}
+  .dl-item:hover{border-color:var(--blue)}
+  .dl-ref{font-weight:700;font-size:12px} .dl-sub{font-size:11px;color:var(--grey)}
+  .dl-meta{font-size:11px;text-align:right;white-space:nowrap;color:var(--grey)}
+  .qfilter{font-size:11px;color:var(--blue);cursor:pointer}
+  /* Analytics */
+  .kpis{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+  .kpi{flex:1 1 120px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfcfe}
+  .kpi-n{font-size:22px;font-weight:800;color:var(--navy);line-height:1}
+  .kpi-l{font-size:11px;color:var(--grey);margin-top:4px}
+  .an-top{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .an-top .kpis{flex:1 1 auto;margin-bottom:0}
+  .donut{flex:0 0 auto} .donut-num{font:800 19px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
+  .donut-lbl{font:600 9px "Segoe UI",system-ui,sans-serif;fill:var(--grey);text-transform:uppercase;letter-spacing:.4px}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px 22px}
+  .ch-h{font-size:12px;color:var(--ink);margin:0 0 8px;font-weight:700}
+  .bar-row{display:grid;grid-template-columns:120px 1fr 32px;gap:8px;align-items:center;margin-bottom:5px;border-radius:6px}
+  .bar-row.click{cursor:pointer;padding:1px 4px;margin-left:-4px}
+  .bar-row.click:hover{background:#f0f7ff}
+  .bar-row.active{background:#e0efff;box-shadow:inset 0 0 0 1px var(--blue)}
+  .bar-label{font-size:11px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-track{background:#eef2f7;border-radius:6px;height:14px;overflow:hidden}
+  .bar-fill{display:block;height:100%;border-radius:6px;min-width:2px;width:0;transition:width .55s cubic-bezier(.4,0,.2,1)}
+  .bar-val{font-size:11px;font-weight:700;color:var(--ink);text-align:right}
+  .metric,.kpi{transition:transform .1s,box-shadow .1s}
+  .metric:hover,.kpi:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(15,61,87,.1)}
+  .fc-node{transition:transform .1s} .fc-node:hover{transform:translateY(-1px)}
+  /* Email-style lists */
+  .lists{max-width:1400px;margin:0 auto;padding:0 18px 28px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .maillist{display:flex;flex-direction:column;max-height:62vh;overflow:auto;margin-top:6px}
+  .qitem{display:flex;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#fff;padding:10px 8px;cursor:pointer}
+  .qitem:hover{background:#f0f7ff} .qitem.active{background:#e0efff;box-shadow:inset 3px 0 0 var(--blue)}
+  .q-ref{font-weight:700;font-size:12.5px;white-space:nowrap}
+  .q-sub{flex:1 1 auto;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-meta{font-size:11px;color:var(--grey);white-space:nowrap}
+  .msg{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 8px;background:#fff}
+  .msg:hover{background:#f0f7ff} .msg.imported,.msg.dismissed{opacity:.65}
+  .msg .snippet{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Detail drawer */
+  #backdrop{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:90}
+  .drawer{position:fixed;top:0;right:0;height:100vh;width:min(660px,94vw);background:var(--bg);
+    box-shadow:-12px 0 40px rgba(15,23,42,.22);transform:translateX(100%);transition:transform .25s ease;
+    z-index:95;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;padding:12px 16px;font-weight:700}
+  .drawer-head button{background:rgba(255,255,255,.18)}
+  #detail{padding:16px;overflow:auto;flex:1 1 auto}
+  #detail h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--grey);margin:14px 0 10px}
+  #drawer .grid2{grid-template-columns:1fr}
+  /* Floating hover preview of the full message */
+  #preview{position:fixed;z-index:120;max-width:440px;max-height:320px;overflow:hidden;background:#fff;
+    border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px rgba(15,23,42,.22);
+    padding:12px 14px;font-size:12px;line-height:1.5;white-space:pre-wrap;color:var(--ink);pointer-events:none}
+  @media(max-width:980px){.grid2{grid-template-columns:1fr}.dl-wrap{grid-template-columns:1fr}.lists{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Freedom of Information — Case Management</h1>
+    <div class="sub">Hertfordshire County Council · Information Governance Unit</div>
+  </div>
+  <div class="userbox" id="userbox" hidden>
+    <span><b id="u_name"></b> <span class="rolechip" id="u_role"></span></span>
+    <button onclick="logout()">Sign out</button>
+  </div>
+  <div class="sub" id="clock"></div>
+</header>
+
+<div id="toast"></div>
+
+<div id="overlay">
+  <div class="login">
+    <h2>Sign in</h2>
+    <div class="sub">FOI Case Management — authorised users only</div>
+    <label>Username</label>
+    <input id="li_user" autocomplete="username" />
+    <label>Password</label>
+    <input id="li_pass" type="password" autocomplete="current-password" />
+    <div class="btnrow"><button id="loginBtn" onclick="login()">Sign in</button></div>
+    <div class="err" id="li_err"></div>
+    <div class="hint">Starter accounts (dev — change in production): <b>caseworker</b>, <b>manager</b>,
+      <b>legal</b>, <b>foi</b>, <b>admin</b> — password same as the username.</div>
+  </div>
+</div>
+
+<section class="dash" id="dash" hidden>
+  <div class="cards" id="cards"></div>
+  <div class="panel">
+    <div class="cardhead">
+      <h2 class="dash-h" style="margin:0">Process — click a stage to see its cases</h2>
+      <button class="ghost small" id="clearFilterBtn" hidden onclick="clearFilter()">Show all stages</button>
+    </div>
+    <div class="pipeline" id="pipeline"></div>
+    <div class="offpipe" id="offpipe"></div>
+  </div>
+  <div class="dl-wrap">
+    <div class="panel"><h2 class="dash-h">⚠ Overdue / breached <span id="ov_n"></span></h2><div id="dl_overdue"></div></div>
+    <div class="panel"><h2 class="dash-h">⏰ Due soon <span id="due_n"></span></h2><div id="dl_due"></div></div>
+  </div>
+  <div class="panel" id="analytics">
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Analytics</h2>
+      <button class="ghost small" onclick="refreshDashboard()">↻ Refresh</button></div>
+    <div class="an-top">
+      <div class="donut" id="donut"></div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+    <div class="charts">
+      <div><h3 class="ch-h">By regime</h3><div id="ch_regime"></div></div>
+      <div><h3 class="ch-h">Outcomes (closed)</h3><div id="ch_outcome"></div></div>
+      <div><h3 class="ch-h">By department</h3><div id="ch_dept"></div></div>
+      <div><h3 class="ch-h">Requests received (last 8 weeks)</h3><div id="ch_intake"></div></div>
+    </div>
+  </div>
+  <div class="panel" id="kbPanel" hidden>
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" style="background:#0f3d57">admin</span></h2>
+      <span class="note" id="kbStats"></span></div>
+    <div class="note" style="margin:0 0 8px">Add facts the auto-drafter can ground on and cite. Stored as a “manual” source alongside crawled pages and published responses.</div>
+    <div class="cardhead" style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
+      <div><strong>Public information</strong> <span class="note" id="kbFreshness">checking…</span></div>
+      <button class="secondary small" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
+    </div>
+    <div class="grid2">
+      <div><label>Title</label><input id="kb_title" placeholder="e.g. Council tax bands 2026/27" /></div>
+      <div><label>Source URL (optional)</label><input id="kb_url" placeholder="https://… (for the citation)" /></div>
+    </div>
+    <label>Information / content</label>
+    <textarea id="kb_content" placeholder="Paste the facts the drafter should be able to quote and cite…"></textarea>
+    <div class="btnrow"><button id="kbAddBtn" onclick="addKBDoc()">Add to knowledge base</button></div>
+    <div class="maillist" id="kbList" style="max-height:34vh;margin-top:12px"></div>
+  </div>
+</section>
+
+<div class="lists">
+  <!-- FOI inbox (email-style list) -->
+  <div class="panel">
+    <div class="cardhead">
+      <h2 class="dash-h" style="margin:0">FOI inbox <span id="inboxCount" class="count" hidden>0</span></h2>
+      <button class="ghost small" id="pollBtn" onclick="pollInbox()">Check inbox</button>
+    </div>
+    <div class="note" id="inboxAddr">Monitoring the dedicated FOI mailbox…</div>
+    <div class="maillist" id="inbox"><div class="empty">Loading…</div></div>
+  </div>
+  <!-- Case queue (email-style list) -->
+  <div class="panel">
+    <div class="cardhead">
+      <h2 class="dash-h" style="margin:0">Case queue <span id="queueCount" class="count" hidden>0</span>
+        <span class="qfilter" id="queueFilter" hidden onclick="clearFilter()"></span></h2>
+      <span class="qfilter" id="manualToggle" onclick="toggleManual()">+ Log manually</span>
+    </div>
+    <input id="queueSearch" placeholder="Search reference, subject or requester…" oninput="renderQueue()" style="margin-bottom:8px" />
+    <div id="manualEntry" hidden>
+      <div class="note" style="margin:0 0 6px">Use only for requests that did not arrive in the FOI mailbox.</div>
+      <div class="grid2">
+        <div><label>Requester name</label><input id="r_name" placeholder="e.g. Alex Taylor" /></div>
+        <div><label>Requester email</label><input id="r_email" placeholder="alex@example.com" /></div>
+      </div>
+      <div class="grid2">
+        <div><label>Requester type</label>
+          <select id="r_type"><option value="resident">Resident</option><option value="business">Local business</option>
+            <option value="stakeholder">Stakeholder</option><option value="journalist">Journalist</option></select></div>
+        <div><label>Subject</label><input id="r_subject" placeholder="Short summary" /></div>
+      </div>
+      <label>Request (one question per line)</label>
+      <textarea id="r_body" placeholder="1. How much household waste was collected last year and what percentage was recycled?&#10;2. How many miles of road does the council maintain?"></textarea>
+      <div class="btnrow"><button id="createBtn">Register request</button></div>
+      <div class="note">Registration starts the statutory 20-working-day clock.</div>
+    </div>
+    <div class="maillist" id="queue"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Slide-in case detail drawer -->
+<div id="backdrop" hidden onclick="closeDetail()"></div>
+<aside id="drawer" class="drawer">
+  <div class="drawer-head"><span id="drawerTitle">Case detail</span>
+    <button class="ghost small" onclick="closeDetail()">✕ Close</button></div>
+  <div id="detail"><div class="empty">Select a case.</div></div>
+</aside>
+
+<!-- Floating hover preview of the full message -->
+<div id="preview" hidden></div>
+
+<script>
+const API = "";  // same origin
+let current = null;
+let me = null;                       // the signed-in user {username, full_name, role, capabilities}
+const can = cap => !!me && me.capabilities.includes(cap);
+
+const STAGES = [
+  ["1_intake","Intake"],["2_triage","Triage"],["3_retrieval_draft","Draft"],
+  ["4_department_review","Dept review"],["5_update_response","Update"],
+  ["6_compliance_gate","Compliance"],["7_sign_off","Sign-off"],
+  ["8_dispatch","Dispatch"],["closed","Closed"]
+];
+const stageIndex = s => STAGES.findIndex(x=>x[0]===s);
+
+async function api(path, method="GET", body){
+  const opt={method,headers:{"Content-Type":"application/json"}};
+  if(body) opt.body=JSON.stringify(body);
+  const res=await fetch(API+path,opt);
+  const data=await res.json().catch(()=>({}));
+  if(res.status===401){ showLogin(); throw new Error("Please sign in."); }
+  if(!res.ok) throw new Error(data.detail||("HTTP "+res.status));
+  return data;
+}
+
+// --- Authentication ---------------------------------------------------------
+function showLogin(){ me=null; document.getElementById("overlay").style.display="flex";
+  document.getElementById("userbox").hidden=true; document.getElementById("dash").hidden=true; }
+function hideLogin(){ document.getElementById("overlay").style.display="none"; }
+
+async function login(){
+  const btn=document.getElementById("loginBtn"), err=document.getElementById("li_err");
+  err.textContent="";
+  const username=document.getElementById("li_user").value.trim();
+  const password=document.getElementById("li_pass").value;
+  btn.disabled=true;
+  try{
+    me=await api("/auth/login","POST",{username,password});
+    document.getElementById("li_pass").value="";
+    hideLogin(); startApp();
+  }catch(e){ err.textContent=e.message; }
+  finally{ btn.disabled=false; }
+}
+
+async function logout(){
+  try{ await api("/auth/logout","POST"); }catch(e){}
+  showLogin();
+}
+
+function renderUser(){
+  document.getElementById("userbox").hidden=false;
+  document.getElementById("u_name").textContent=me.full_name||me.username;
+  document.getElementById("u_role").textContent=me.role.replace("_"," ");
+}
+
+function startApp(){
+  renderUser();
+  document.getElementById("dash").hidden=false;
+  document.getElementById("pollBtn").style.display = can("intake") ? "" : "none";
+  document.getElementById("manualToggle").style.display = can("intake") ? "" : "none";
+  loadDashboard();
+  loadAnalytics();
+  loadKB();
+  loadQueue().then(loadInbox).then(()=>{ if(can("intake")) pollInbox(); });
+}
+
+function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
+
+function toast(msg){
+  const wrap=document.getElementById("toast");
+  const el=document.createElement("div"); el.className="t"; el.textContent=msg;
+  wrap.appendChild(el); setTimeout(()=>el.remove(),3200);
+}
+
+const expanded=new Set();
+let queueItems=[];   // latest case queue, for the link-to-case selector
+let dashData=null;   // latest /dashboard payload
+let activeFilter=null;   // {kind:'stage'|'open'|'closed'|'due'|'overdue', value?, label}
+
+// Pipeline stages for the process diagram (in order).
+const PIPELINE=[
+  ["1_intake","Intake"],["2_triage","Triage"],["3_retrieval_draft","Draft"],
+  ["4_department_review","Dept review"],["5_update_response","Update"],
+  ["6_compliance_gate","Compliance"],["7_sign_off","Sign-off"],
+  ["8_dispatch","Dispatch"],["closed","Closed"]
+];
+const STAGE_LABEL=Object.fromEntries(PIPELINE.concat([
+  ["awaiting_clarification","Awaiting clarification"],["internal_review","Internal review"]
+]));
+
+// --- Process flowchart (SVG) --------------------------------------------------
+const STAGE_COLOR={
+  "1_intake":"#64748b","2_triage":"#2563eb","3_retrieval_draft":"#4f46e5",
+  "6_compliance_gate":"#0d9488","7_sign_off":"#7c3aed","8_dispatch":"#0891b2",
+  "closed":"#15803d","4_department_review":"#d97706","5_update_response":"#f59e0b",
+  "awaiting_clarification":"#b45309","internal_review":"#6d28d9"
+};
+const FC_W=120, FC_H=46;
+const FC_NODES=[
+  {key:"1_intake",label:"Intake",x:12,y:24},
+  {key:"2_triage",label:"Triage",x:172,y:24},
+  {key:"3_retrieval_draft",label:"Draft",x:332,y:24},
+  {key:"6_compliance_gate",label:"Compliance",x:492,y:24},
+  {key:"7_sign_off",label:"Sign-off",x:652,y:24},
+  {key:"8_dispatch",label:"Dispatch",x:812,y:24},
+  {key:"closed",label:"Closed",x:972,y:24},
+  {key:"4_department_review",label:"Dept review",x:332,y:140,off:true},
+  {key:"5_update_response",label:"Update",x:492,y:140,off:true},
+  {key:"awaiting_clarification",label:"Awaiting clar.",x:172,y:140,off:true},
+  {key:"internal_review",label:"Internal review",x:972,y:140,off:true},
+];
+const FC_EDGES=[  // forward (solid)
+  "M132,47 L172,47","M292,47 L332,47","M452,47 L492,47","M612,47 L652,47","M772,47 L812,47","M932,47 L972,47",
+  "M392,70 L392,140","M452,163 L492,163","M552,140 L552,70",   // low-confidence review branch
+];
+const FC_LOOPS=[  // dashed loops / off-pipeline
+  {d:"M232,70 L232,140",both:true},                  // triage <-> awaiting clarification
+  {d:"M1032,70 L1032,140"},                          // closed -> internal review
+  {d:"M492,56 L468,56 L468,212 L388,212 L388,187"},  // compliance -> dept review (rework)
+  {d:"M712,70 L712,228 L396,228 L396,187"},          // sign-off -> dept review (changes)
+  {d:"M1032,187 L1032,242 L404,242 L404,187"},       // internal review -> dept review (revise)
+];
+const FC_ELABELS=[
+  {x:466,y:40,t:"if confident"},
+  {x:398,y:108,t:"needs review",anchor:"start"},
+  {x:238,y:114,t:"unclear?",anchor:"start"},
+  {x:1038,y:114,t:"review",anchor:"start"},
+];
+
+function flowchartSVG(){
+  const counts=dashData.stage_counts||{};
+  const nodes=FC_NODES.map(nd=>{
+    const n=counts[nd.key]||0, cx=nd.x+FC_W/2, lbl=STAGE_LABEL[nd.key]||nd.label;
+    const col=STAGE_COLOR[nd.key]||"#64748b", active=fActive("stage",nd.key);
+    const cls="fc-node"+(nd.off?" off":"");
+    const ring=active?`<rect x="${nd.x-3}" y="${nd.y-3}" width="${FC_W+6}" height="${FC_H+6}" rx="10" fill="none" stroke="#1d6fb8" stroke-width="2.5"/>`:"";
+    const rectStyle=`fill:${active?'#f0f7ff':'#fff'};stroke:${col};stroke-width:1.8${n===0?';opacity:.45':''}`;
+    return `<g class="${cls}" onclick="setFilter('stage','${nd.key}','${lbl}')">
+      <title>${lbl}: ${n} case${n===1?"":"s"} — click to filter</title>
+      ${ring}<rect x="${nd.x}" y="${nd.y}" width="${FC_W}" height="${FC_H}" rx="8" style="${rectStyle}"/>
+      <rect x="${nd.x}" y="${nd.y}" width="${FC_W}" height="5" rx="2.5" fill="${col}"${n===0?' opacity="0.45"':''}/>
+      <text class="fc-label" x="${cx}" y="${nd.y+22}" text-anchor="middle">${nd.label}</text>
+      <text class="fc-count" x="${cx}" y="${nd.y+39}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
+  }).join("");
+  const fwd=FC_EDGES.map(d=>`<path class="fc-edge" d="${d}" marker-end="url(#fcArrow)"/>`).join("");
+  const loops=FC_LOOPS.map(e=>`<path class="fc-edge loop" d="${e.d}" marker-end="url(#fcArrow)" ${e.both?'marker-start="url(#fcArrow)"':''}/>`).join("");
+  const labels=FC_ELABELS.map(l=>`<text class="fc-elabel" x="${l.x}" y="${l.y}" text-anchor="${l.anchor||'middle'}">${l.t}</text>`).join("");
+  return `<svg viewBox="0 0 1104 258" role="img" aria-label="FOI process flowchart">
+    <defs><marker id="fcArrow" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+    ${fwd}${loops}${labels}${nodes}</svg>`;
+}
+
+async function loadDashboard(){
+  try{ dashData=await api("/dashboard"); renderDashboard(); }catch(e){}
+}
+
+function fActive(kind,value){ return activeFilter && activeFilter.kind===kind && activeFilter.value===value; }
+
+function renderDashboard(){
+  if(!dashData) return;
+  const t=dashData.totals, sla=dashData.sla;
+  // [card class, count, label, filter kind, filter value, filter label]
+  const cards=[
+    ["open", t.open, "Open cases", "open", null, "open cases"],
+    ["due", sla.amber+sla.red, "Due soon", "due", null, "due soon"],
+    ["breach", sla.breach, "Overdue", "overdue", null, "overdue"],
+    ["paused", sla.paused, "Awaiting clarification", "stage", "awaiting_clarification", "awaiting clarification"],
+    ["closed", t.closed, "Closed", "closed", null, "closed"],
+  ];
+  document.getElementById("cards").innerHTML=cards.map(([cls,n,label,kind,value,flabel])=>
+    `<div class="metric ${cls}${fActive(kind,value)?" active":""}" onclick="setFilter('${kind}',${value?`'${value}'`:"null"},'${flabel}')">
+      <div class="m-num">${n}</div><div class="m-label">${label}</div></div>`).join("");
+
+  document.getElementById("pipeline").innerHTML=`<div class="fc-wrap">${flowchartSVG()}</div>`;
+  document.getElementById("offpipe").innerHTML=`<div class="fc-legend">→ progress &nbsp;·&nbsp; ⇠ dashed = clarification &amp; review loops &nbsp;·&nbsp; click any stage to see its cases</div>`;
+
+  renderDeadlines("dl_overdue","ov_n",dashData.deadlines.overdue,dashData.deadlines.overdue_total);
+  renderDeadlines("dl_due","due_n",dashData.deadlines.due_soon,dashData.deadlines.due_soon_total);
+}
+
+function renderDeadlines(elId,countId,items,total){
+  const el=document.getElementById(elId);
+  document.getElementById(countId).textContent=total?`(${total})`:"";
+  if(!items.length){ el.innerHTML='<div class="empty" style="padding:12px">None.</div>'; return; }
+  el.innerHTML=items.map(c=>`<div class="dl-item" onclick="openCase(${c.id})">
+      <div><div class="dl-ref">${c.reference} ${flagBadge(c.flag)}</div>
+        <div class="dl-sub">${escapeHtml((c.subject||"").slice(0,40))} · ${STAGE_LABEL[c.stage]||c.stage}</div></div>
+      <div class="dl-meta">${c.deadline}<br>${c.working_days_remaining} wd left</div>
+    </div>`).join("")
+    + (total>items.length?`<div class="note">+${total-items.length} more…</div>`:"");
+}
+
+const OUTCOME_COLOR={granted_full:"#15803d",granted_partial:"#0d9488",not_held:"#64748b",refused:"#b91c1c",open:"#1d6fb8"};
+let anData=null;   // latest /analytics payload
+
+async function loadAnalytics(){
+  try{ anData=await api("/analytics"); renderAnalytics(); }catch(e){}
+}
+
+// opt: {colorFn, kind, valOf, labOf} — when kind is set, rows cross-filter the queue.
+function bars(elId, data, opt={}){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(!data || !data.length){ el.innerHTML='<div class="empty" style="padding:8px;text-align:left">No data yet.</div>'; return; }
+  const max=Math.max(1, ...data.map(d=>d.value));
+  el.innerHTML=data.map(d=>{
+    const col=(opt.colorFn&&opt.colorFn(d))||"#1d6fb8";
+    const w=Math.round(d.value/max*100);
+    let cls="bar-row", attrs="";
+    if(opt.kind){
+      const val=opt.valOf?opt.valOf(d):d.label, lab=opt.labOf?opt.labOf(d):d.label;
+      cls+=" click"+(fActive(opt.kind,val)?" active":"");
+      attrs=`onclick="barClick(this)" data-kind="${opt.kind}" data-val="${escapeAttr(val)}" data-label="${escapeAttr(lab)}"`;
+    }
+    return `<div class="${cls}" ${attrs} title="${escapeHtml(d.label)}: ${d.value}"><span class="bar-label">${escapeHtml(d.label)}</span>
+      <span class="bar-track"><span class="bar-fill" data-w="${w}%" style="background:${col}"></span></span>
+      <span class="bar-val">${d.value}</span></div>`;
+  }).join("");
+}
+
+function donut(pct){
+  const el=document.getElementById("donut");
+  if(pct==null){ el.innerHTML='<div class="empty" style="width:100px">No closed cases</div>'; return; }
+  const r=34, c=2*Math.PI*r, off=c*(1-pct/100);
+  const col=pct>=90?"#15803d":pct>=75?"#b45309":"#b91c1c";
+  el.innerHTML=`<svg width="96" height="96" viewBox="0 0 96 96">
+    <circle cx="48" cy="48" r="${r}" fill="none" stroke="#eef2f7" stroke-width="10"/>
+    <circle cx="48" cy="48" r="${r}" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round"
+      stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" data-off="${off.toFixed(1)}"
+      transform="rotate(-90 48 48)" style="transition:stroke-dashoffset .7s ease"/>
+    <text x="48" y="46" text-anchor="middle" class="donut-num">${pct}%</text>
+    <text x="48" y="60" text-anchor="middle" class="donut-lbl">on time</text></svg>`;
+}
+
+function renderAnalytics(){
+  if(!anData) return;
+  const a=anData, s=a.sla;
+  donut(s.on_time_pct);
+  document.getElementById("kpis").innerHTML=[
+    [s.avg_working_days_to_close==null?"—":s.avg_working_days_to_close,"Avg working days to close"],
+    [s.closed,"Closed cases"],
+    [s.breached,"Closed late"],
+    [a.clarifications,"Clarifications raised"],
+  ].map(([n,l])=>`<div class="kpi"><div class="kpi-n">${n}</div><div class="kpi-l">${l}</div></div>`).join("");
+  bars("ch_regime", a.by_regime, {colorFn:d=>d.label==="EIR"?"#15803d":"#1d6fb8", kind:"regime"});
+  bars("ch_outcome", a.by_outcome, {colorFn:d=>OUTCOME_COLOR[d.key]||"#1d6fb8", kind:"outcome", valOf:d=>d.key});
+  bars("ch_dept", a.by_department, {colorFn:()=>"#7c3aed", kind:"department"});
+  bars("ch_intake", a.intake_by_week, {colorFn:()=>"#0d9488"});
+  requestAnimationFrame(()=>{
+    document.querySelectorAll("#analytics .bar-fill[data-w]").forEach(b=>b.style.width=b.dataset.w);
+    const p=document.querySelector("#donut circle[data-off]"); if(p) p.style.strokeDashoffset=p.dataset.off;
+  });
+}
+
+function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
+function barClick(el){ setFilter(el.dataset.kind, el.dataset.val, el.dataset.label); }
+function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); }
+
+const SOURCE_COLOR={manual:"#7c3aed",website:"#1d6fb8",published_response:"#0d9488"};
+async function loadKB(){
+  const panel=document.getElementById("kbPanel");
+  if(!can("admin")){ panel.hidden=true; return; }
+  panel.hidden=false;
+  try{
+    const stats=await api("/admin/knowledge-base");
+    document.getElementById("kbStats").textContent=
+      `${stats.total} docs · ${stats.indexed_chunks} indexed chunks · retrieval: ${stats.retrieval_provider}`;
+    const docs=await api("/admin/knowledge-base/docs");
+    const el=document.getElementById("kbList");
+    el.innerHTML=docs.length? docs.map(d=>`<div class="qitem" style="cursor:default">
+        <span class="pill" style="background:${SOURCE_COLOR[d.source]||'#64748b'};color:#fff;border:0">${d.source.replace('_',' ')}</span>
+        <span class="q-sub">${escapeHtml(d.title||"(untitled)")}</span>
+        <span class="q-meta">${d.content_chars.toLocaleString()} chars · ${d.chunks} chunks</span>
+        <button class="secondary small" onclick="deleteKBDoc(${d.id})">Delete</button></div>`).join("")
+      : '<div class="empty">No documents yet.</div>';
+    loadKBFreshness();
+  }catch(e){ toast(e.message); }
+}
+async function loadKBFreshness(){
+  const el=document.getElementById("kbFreshness"); if(!el) return;
+  try{
+    const s=await api("/admin/knowledge-base/refresh");
+    const when=s.last&&s.last.finished_at
+      ? `last updated ${new Date(s.last.finished_at).toLocaleString()}` : "never updated";
+    const mode=s.enabled
+      ? `auto-refresh on (every ${s.max_age_days}d${s.on_draft?", + before drafting":""})`
+      : "auto-refresh off";
+    el.innerHTML=`· ${when} · ${mode} `+
+      (s.stale?'<span style="color:#b45309">stale</span>':'<span style="color:#15803d">current</span>');
+  }catch(e){ el.textContent=""; }
+}
+async function refreshKB(){
+  const btn=document.getElementById("kbRefreshBtn"); btn.disabled=true; btn.textContent="Refreshing…";
+  try{
+    const r=await api("/admin/knowledge-base/refresh","POST");
+    toast(`Refresh ${r.status}: ${r.detail}`);
+    loadKB();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; btn.textContent="Refresh now"; }
+}
+async function addKBDoc(){
+  const title=document.getElementById("kb_title").value.trim();
+  const content=document.getElementById("kb_content").value.trim();
+  const url=document.getElementById("kb_url").value.trim()||null;
+  if(!content){ toast("Enter some content to add."); return; }
+  const btn=document.getElementById("kbAddBtn"); btn.disabled=true;
+  try{
+    const d=await api("/admin/knowledge-base/docs","POST",{title,content,url});
+    ["kb_title","kb_content","kb_url"].forEach(id=>document.getElementById(id).value="");
+    toast(`Added “${d.title}”${d.chunks?` (${d.chunks} chunks indexed)`:""}.`);
+    loadKB(); loadDashboard();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; }
+}
+async function deleteKBDoc(id){
+  try{ await api(`/admin/knowledge-base/docs/${id}`,"DELETE"); toast("Removed from knowledge base."); loadKB(); loadDashboard(); }
+  catch(e){ toast(e.message); }
+}
+
+function setFilter(kind, value, label){
+  if(activeFilter && activeFilter.kind===kind && activeFilter.value===value){ activeFilter=null; }
+  else activeFilter={kind, value, label};
+  renderDashboard(); renderAnalytics(); renderQueue();
+  document.getElementById("queue").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function clearFilter(){ activeFilter=null; renderDashboard(); renderAnalytics(); renderQueue(); }
+
+function matchesFilter(it){
+  if(!activeFilter) return true;
+  const f=activeFilter, closed=it.stage==="closed";
+  if(f.kind==="stage")      return it.stage===f.value;
+  if(f.kind==="open")       return !closed;
+  if(f.kind==="closed")     return closed;
+  if(f.kind==="overdue")    return !closed && !it.paused && it.sla_flag==="breach";
+  if(f.kind==="due")        return !closed && !it.paused && (it.sla_flag==="amber"||it.sla_flag==="red");
+  if(f.kind==="regime")     return it.regime===f.value;
+  if(f.kind==="department") return it.owning_department===f.value;
+  if(f.kind==="outcome")    return closed && it.outcome===f.value;
+  return true;
+}
+
+async function loadInbox(){
+  const items=await api("/inbox");
+  const box=document.getElementById("inbox");
+  const newOnes=items.filter(m=>m.status==="new");
+  const badge=document.getElementById("inboxCount");
+  badge.textContent=newOnes.length; badge.hidden=newOnes.length===0;
+  if(!items.length){box.innerHTML='<div class="empty">No messages yet — click “Check inbox”.</div>';return;}
+  box.innerHTML="";
+  for(const m of items){
+    const open=expanded.has(m.id);
+    const div=document.createElement("div");
+    div.className="msg "+m.status;
+    div.setAttribute("data-preview", `From: ${m.from_name||""} <${m.from_email}>\nSubject: ${m.subject||""}\n\n${m.body||""}`);
+    const snippet=m.body.replace(/\s+/g," ").trim().slice(0,120);
+    let actions="";
+    if(m.status==="new" && can("intake")){
+      const hint=m.suggested_reference
+        ? `<div class="thread-hint">↪ Looks like a reply to <b>${escapeHtml(m.suggested_reference)}</b> — ${escapeHtml(m.suggested_reason||"")}</div>`
+        : "";
+      const linkRow=queueItems.length?`<div class="row">
+          <select id="lk_${m.id}" onclick="event.stopPropagation()">${caseOptions(m.suggested_request_id)}</select>
+          <button class="purple small" onclick="event.stopPropagation();linkMsg(${m.id})">Link to case ↪</button>
+        </div>`:"";
+      actions=`<div class="row">
+        <select id="rt_${m.id}" onclick="event.stopPropagation()">
+          <option value="resident">Resident</option>
+          <option value="business">Local business</option>
+          <option value="stakeholder">Stakeholder</option>
+          <option value="journalist">Journalist</option>
+        </select>
+        <button class="green small" onclick="event.stopPropagation();importMsg(${m.id})">Log as new case →</button>
+        <button class="secondary small" onclick="event.stopPropagation();dismissMsg(${m.id})">Dismiss</button>
+      </div>${hint}${linkRow}`;
+    } else if(m.status==="imported"||m.status==="linked"){
+      const verb=m.status==="linked"?"Open linked case →":"Open case →";
+      actions=`<div class="row"><button class="ghost small" onclick="event.stopPropagation();openCase(${m.request_id})">${verb}</button></div>`;
+    }
+    div.innerHTML=`
+      <div class="row" style="margin:0;justify-content:space-between">
+        <span class="subj">${escapeHtml(m.subject||"(no subject)")}</span>
+        <span class="mflag ${m.status}">${m.status.toUpperCase()}</span>
+      </div>
+      <div class="from">${escapeHtml(m.from_name||"")} &lt;${escapeHtml(m.from_email)}&gt; · ${new Date(m.received_at).toLocaleString('en-GB')}</div>
+      ${open?`<div class="full">${escapeHtml(m.body)}</div>`:`<div class="snippet">${escapeHtml(snippet)}${m.body.length>120?"…":""}</div>`}
+      ${actions}`;
+    if(m.status==="new"||true){
+      div.onclick=()=>{ if(open)expanded.delete(m.id); else expanded.add(m.id); loadInbox(); };
+    }
+    box.appendChild(div);
+  }
+}
+
+async function pollInbox(){
+  const btn=document.getElementById("pollBtn");
+  btn.disabled=true; const prev=btn.textContent; btn.textContent="Checking…";
+  try{
+    const r=await api("/inbox/poll","POST");
+    document.getElementById("inboxAddr").textContent=`Monitoring ${r.address} · provider: ${r.provider}`;
+    toast(r.new>0?`${r.new} new message${r.new>1?"s":""} in the FOI inbox`:"No new messages.");
+    await loadInbox();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; btn.textContent=prev; }
+}
+
+async function importMsg(id){
+  const rt=document.getElementById("rt_"+id);
+  const requester_type=rt?rt.value:"resident";
+  try{
+    const c=await api(`/inbox/${id}/import`,"POST",{requester_type});
+    expanded.delete(id);
+    toast(`Logged ${c.reference} — statutory clock started.`);
+    await loadInbox(); await openCase(c.id);
+  }catch(e){ toast(e.message); }
+}
+
+async function dismissMsg(id){
+  try{ await api(`/inbox/${id}/dismiss`,"POST"); expanded.delete(id); await loadInbox(); }
+  catch(e){ toast(e.message); }
+}
+
+function caseOptions(selectedId){
+  return queueItems.map(c=>{
+    const sel=c.id===selectedId?" selected":"";
+    const subj=(c.subject||"").slice(0,40);
+    return `<option value="${c.id}"${sel}>${escapeHtml(c.reference)} — ${escapeHtml(subj)}</option>`;
+  }).join("");
+}
+
+async function linkMsg(id){
+  const sel=document.getElementById("lk_"+id);
+  if(!sel||!sel.value){ toast("No case selected to link to."); return; }
+  try{
+    const c=await api(`/inbox/${id}/link`,"POST",{request_id:Number(sel.value)});
+    expanded.delete(id);
+    toast(`Filed as correspondence on ${c.reference}.`);
+    await loadInbox(); await openCase(c.id);
+  }catch(e){ toast(e.message); }
+}
+
+async function loadQueue(){
+  queueItems=await api("/requests");   // also used to populate the link-to-case selector
+  renderQueue();
+}
+
+function renderQueue(){
+  const search=(document.getElementById("queueSearch")?.value||"").toLowerCase().trim();
+  const shown = queueItems.filter(matchesFilter).filter(it=>
+    !search || `${it.reference} ${it.subject||""} ${it.requester_name||""}`.toLowerCase().includes(search));
+
+  // queue header count + active-filter indicator
+  const badge=document.getElementById("queueCount");
+  badge.textContent=shown.length; badge.hidden=false;
+  const fil=document.getElementById("queueFilter");
+  const clearBtn=document.getElementById("clearFilterBtn");
+  if(activeFilter){ fil.hidden=false; fil.textContent=`Filtered: ${activeFilter.label} ✕`; clearBtn.hidden=false; }
+  else{ fil.hidden=true; clearBtn.hidden=true; }
+
+  const q=document.getElementById("queue");
+  if(!shown.length){ q.innerHTML=`<div class="empty">${(activeFilter||search)?"No cases match.":"No cases yet."}</div>`; return; }
+  q.innerHTML="";
+  for(const it of shown){
+    const div=document.createElement("div");
+    div.className="qitem"+(current&&current.id===it.id?" active":"");
+    div.setAttribute("data-preview", it.body||"(no content)");
+    const label=STAGE_LABEL[it.stage] || STAGES[stageIndex(it.stage)]?.[1] || it.stage;
+    const sla = it.stage==="closed" ? '<span class="flag green">CLOSED</span>'
+      : (it.paused ? '<span class="flag amber">PAUSED</span>' : (it.sla_flag?flagBadge(it.sla_flag):""));
+    const wd = (it.stage!=="closed" && it.working_days_remaining!=null) ? `${it.working_days_remaining} wd` : "";
+    div.innerHTML=`<span class="q-ref">${it.reference}</span>${sla}
+      <span class="q-sub">${escapeHtml(it.subject||"(no subject)")}</span>
+      <span class="q-meta">${escapeHtml(it.owning_department||"—")}</span>
+      <span class="pill">${label}</span>
+      <span class="q-meta">${wd}</span>`;
+    div.onclick=()=>openCase(it.id);
+    q.appendChild(div);
+  }
+}
+
+async function openCase(id){
+  current=await api("/requests/"+id);
+  let sla=null; try{sla=await api(`/requests/${id}/sla`);}catch(e){}
+  render(sla);
+  document.getElementById("drawerTitle").textContent=`${current.reference} — ${current.subject||""}`;
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("backdrop").hidden=false;
+  loadQueue();
+  loadDashboard();   // counts/deadlines may have changed
+  loadAnalytics();
+}
+
+function closeDetail(){
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("backdrop").hidden=true;
+  current=null; renderQueue();
+}
+function toggleManual(){ const m=document.getElementById("manualEntry"); m.hidden=!m.hidden; }
+
+function setupPreview(){
+  const prev=document.getElementById("preview");
+  const place=e=>{
+    let x=e.clientX+16, y=e.clientY+16;
+    if(x+prev.offsetWidth+14>innerWidth) x=e.clientX-prev.offsetWidth-16;
+    if(y+prev.offsetHeight+14>innerHeight) y=innerHeight-prev.offsetHeight-14;
+    prev.style.left=Math.max(12,x)+"px"; prev.style.top=Math.max(12,y)+"px";
+  };
+  document.addEventListener("mouseover",e=>{
+    const row=e.target.closest("[data-preview]"); if(!row) return;
+    const txt=row.getAttribute("data-preview")||""; if(!txt.trim()) return;
+    prev.textContent=txt; prev.hidden=false; place(e);
+  });
+  document.addEventListener("mousemove",e=>{ if(!prev.hidden) place(e); });
+  document.addEventListener("mouseout",e=>{
+    const row=e.target.closest("[data-preview]");
+    if(row && (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest("[data-preview]"))) prev.hidden=true;
+  });
+}
+
+function tracker(stage){
+  const idx=stageIndex(stage);
+  return `<div class="tracker">`+STAGES.map((s,i)=>{
+    let cls="step"; if(i<idx)cls+=" done"; if(i===idx)cls+=" current";
+    return `<span class="${cls}">${i+1<9?(i+1)+". ":""}${s[1]}</span>`;
+  }).join("")+`</div>`;
+}
+
+function needs(txt){ return `<div class="needs">⏳ ${txt}</div>`; }
+
+function banner(c){
+  if(c.stage==="awaiting_clarification") return `<div class="banner pause">⏸ Awaiting clarification from the requester — the statutory clock is paused.</div>`;
+  if(c.stage==="internal_review") return `<div class="banner review">🔁 Internal review — case reopened after dispatch.</div>`;
+  return "";
+}
+
+function clarifyBlock(){
+  return `<details style="margin-top:10px"><summary>Request clarification (pause clock)</summary>
+    <label>What to ask the requester</label>
+    <textarea id="clar_q" placeholder="e.g. Please confirm which financial year and which service this covers."></textarea>
+    <div class="btnrow"><button class="amber" onclick="requestClarification()">Send &amp; pause clock ⏸</button></div>
+  </details>`;
+}
+
+function actionsFor(c){
+  const s=c.stage;
+  const signedOff=(c.events||[]).some(e=>e.action==="signoff:authorised");
+  if(s==="1_intake") return can("process")?`<button onclick="act('/triage')">Run triage →</button>`+clarifyBlock():needs("Awaiting a caseworker to run triage.");
+  if(s==="2_triage") return can("process")?`<button onclick="act('/autodraft')">Retrieve &amp; auto-draft →</button>`+clarifyBlock():needs("Awaiting a caseworker to draft.");
+  if(s==="3_retrieval_draft") return can("process")?`<button onclick="act('/autodraft')">Continue →</button>`:needs("Awaiting a caseworker.");
+  if(s==="awaiting_clarification"){
+    if(!can("process")) return needs("Awaiting clarification from the requester (clock paused).");
+    const asked=(c.events||[]).slice().reverse().find(e=>e.action==="clarification:requested");
+    return `${asked?`<div class="note">${escapeHtml(asked.detail||"")}</div>`:""}
+      <label>Clarification received from requester</label>
+      <textarea id="clar_a" placeholder="Paste / confirm the requester's clarification…"></textarea>
+      <div class="btnrow"><button class="green" onclick="provideClarification()">Record &amp; resume clock ▶</button></div>`;
+  }
+  if(s==="internal_review"){
+    if(!can("sign_off")) return needs("Internal review in progress — awaiting Legal &amp; IG.");
+    return `<label>Review note</label>
+      <textarea id="rev_note" placeholder="Outcome / reasoning of the internal review…"></textarea>
+      <div class="btnrow"><button class="green" onclick="completeReview(true)">Uphold original →</button>
+      <button class="amber" onclick="completeReview(false)">Revise response ↩</button></div>`;
+  }
+  if(s==="4_department_review"){
+    if(!can("process")) return needs("With the department for review.");
+    return `
+    <div style="margin-top:8px">
+      <label>Information supplied / corrections</label>
+      <textarea id="sme_text" placeholder="Add the missing information the system could not find…"></textarea>
+      <label>Holding status</label>
+      <select id="sme_holding">
+        <option value="held">Information held</option>
+        <option value="partial">Partially held</option>
+        <option value="not_held">Not held</option>
+      </select>
+      <div class="btnrow"><button class="amber" onclick="smeUpdate()">Submit &amp; return to compliance →</button></div>
+    </div>`;
+  }
+  if(s==="6_compliance_gate"){
+    let html="";
+    if(can("process")) html+=`<div class="btnrow"><button class="ghost" onclick="runCompliance()">Run compliance checks</button></div><div id="checks" class="checks"></div>`;
+    if(can("approve")) html+=`<div class="btnrow"><button class="green" onclick="approve(true)">Approve →</button><button class="secondary" onclick="approve(false)">Request changes ↩</button></div>`;
+    else html+=needs("Awaiting department manager approval.");
+    return html;
+  }
+  if(s==="7_sign_off"){
+    if(signedOff) return can("dispatch")
+      ? `<div class="btnrow"><button class="green" onclick="dispatch()">Dispatch to requester →</button></div><div class="note">Authorised. Ready for the FOI team to send.</div>`
+      : needs("Authorised — awaiting the FOI team to dispatch.");
+    return can("sign_off")
+      ? `<div class="btnrow"><button class="purple" onclick="signoff(true)">Authorise sign-off →</button><button class="secondary" onclick="signoff(false)">Reject ↩</button></div>`
+      : needs("Awaiting final sign-off by Legal & IG.");
+  }
+  if(s==="8_dispatch"||s==="closed"){
+    let html=`<div class="note">Case closed. Outcome: <b>${c.outcome}</b>. Response issued to the requester with appeal rights.</div>`;
+    if(s==="closed" && can("intake")) html+=`<details style="margin-top:10px"><summary>Requester dissatisfied — request internal review</summary>
+      <label>Reason given by requester</label>
+      <textarea id="rev_reason" placeholder="Why the requester is dissatisfied with the response or handling…"></textarea>
+      <div class="btnrow"><button class="purple" onclick="requestReview()">Reopen for internal review 🔁</button></div></details>`;
+    return html;
+  }
+  return "";
+}
+
+function render(sla){
+  const c=current;
+  const draft=(c.drafts&&c.drafts.length)?c.drafts[c.drafts.length-1]:null;
+  const d=document.getElementById("detail");
+  d.innerHTML=`
+    <h2>${c.reference}</h2>
+    ${banner(c)}
+    ${tracker(c.stage)}
+    <div class="grid2">
+      <div>
+        <div class="kv">
+          <div class="k">Subject</div><div>${c.subject||"—"}</div>
+          <div class="k">Requester</div><div>${c.requester_name} (${c.requester_type})</div>
+          <div class="k">Regime</div><div>${c.regime}</div>
+          <div class="k">Department</div><div>${c.owning_department||"unassigned"}</div>
+          <div class="k">Holding</div><div>${c.holding_status}</div>
+          <div class="k">Confidence</div><div>${(c.confidence*100).toFixed(0)}%</div>
+          <div class="k">Deadline</div><div>${c.deadline?c.deadline.slice(0,10):"—"} ${sla?flagBadge(sla.flag):""} ${sla&&sla.paused?'<span class="pill paused">clock paused</span>':""}</div>
+          ${sla?`<div class="k">Working days left</div><div>${sla.working_days_remaining}${sla.working_days_paused?` · paused ${sla.working_days_paused}`:""}</div>`:""}
+        </div>
+        <h2>Actions</h2>
+        ${actionsFor(c)}
+        <h2 style="margin-top:16px">Audit trail</h2>
+        <ul class="timeline">${(c.events||[]).slice().reverse().map(e=>
+          `<li><b>${e.action}</b> — ${e.actor}<div class="when">${new Date(e.created_at).toLocaleString('en-GB')} · ${e.detail||""}</div></li>`
+        ).join("")||'<li class="when">No events yet.</li>'}</ul>
+      </div>
+      <div>
+        <h2>Draft response ${draft?`(v${draft.version})`:""}</h2>
+        <div class="letter">${draft?escapeHtml(draft.body):'<span class="empty">No draft yet — run triage, then auto-draft.</span>'}</div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+
+async function act(path){
+  try{ await api("/requests/"+current.id+path,"POST"); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function smeUpdate(){
+  const supplied_text=document.getElementById("sme_text").value||"Information supplied.";
+  const holding_status=document.getElementById("sme_holding").value;
+  try{ await api(`/requests/${current.id}/sme-update`,"POST",{supplied_text,holding_status}); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function requestClarification(){
+  const question=document.getElementById("clar_q").value.trim();
+  if(!question){ alert("Enter what to ask the requester."); return; }
+  try{ await api(`/requests/${current.id}/request-clarification`,"POST",{question}); toast("Clarification requested — clock paused."); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function provideClarification(){
+  const clarification_text=document.getElementById("clar_a").value.trim()||"Clarification received.";
+  try{ await api(`/requests/${current.id}/provide-clarification`,"POST",{clarification_text}); toast("Clarification recorded — clock resumed."); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function requestReview(){
+  const reason=document.getElementById("rev_reason").value.trim();
+  try{ await api(`/requests/${current.id}/internal-review`,"POST",{reason}); toast("Case reopened for internal review."); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function completeReview(upheld){
+  const note=document.getElementById("rev_note").value.trim();
+  try{ await api(`/requests/${current.id}/internal-review/complete`,"POST",{upheld,note}); toast(upheld?"Review complete — original upheld.":"Review complete — sent back for revision."); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function runCompliance(){
+  try{
+    const r=await api(`/requests/${current.id}/compliance`,"POST");
+    const el=document.getElementById("checks");
+    el.innerHTML=r.items.map(i=>`<div class="${i.passed?'ok':'bad'}">${i.passed?'✓':'✗'} ${i.name.replace(/_/g,' ')} — ${i.detail}</div>`).join("")
+      +`<div class="note">${r.requires_human?'⚠ Human confirmation required before approval.':'Automated checks complete.'}</div>`;
+  }catch(e){alert(e.message);}
+}
+async function approve(ok){
+  try{ await api(`/requests/${current.id}/approve`,"POST",{approved:ok,note:ok?"Approved via UI":"Changes requested via UI"}); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function signoff(ok){
+  try{ await api(`/requests/${current.id}/sign-off`,"POST",{authorised:ok,note:""}); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+async function dispatch(){
+  try{ await api(`/requests/${current.id}/dispatch`,"POST",{}); await openCase(current.id);}
+  catch(e){alert(e.message);}
+}
+
+document.getElementById("createBtn").onclick=async()=>{
+  const payload={
+    requester_name:document.getElementById("r_name").value||"Anonymous",
+    requester_email:document.getElementById("r_email").value||"anon@example.com",
+    requester_type:document.getElementById("r_type").value,
+    subject:document.getElementById("r_subject").value||"FOI request",
+    body:document.getElementById("r_body").value||"1. Please provide the requested information?"
+  };
+  try{
+    const c=await api("/requests","POST",payload);
+    ["r_name","r_email","r_subject","r_body"].forEach(id=>document.getElementById(id).value="");
+    await openCase(c.id);
+  }catch(e){alert(e.message);}
+};
+
+document.getElementById("clock").textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+document.getElementById("li_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDetail(); });
+setupPreview();
+
+// Bootstrap: if there's a valid session, start the app; otherwise show login.
+(async function init(){
+  try{ me=await api("/auth/me"); hideLogin(); startApp(); }
+  catch(e){ showLogin(); }
+})();
+</script>
+</body>
+</html>

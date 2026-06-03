@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+.env
+.pytest_cache/
+.DS_Store
+# Claude Code local/personal artifacts (not shared)
+.claude/settings.local.json
+.claude/*.lock
+# Vendored semantic embedding model (large ONNX binary) — fetched via
+# `python -m app.fetch_model`; ship it with the deploy artifact, not git.
+models/
