@@ -178,3 +178,70 @@ def test_kb_refresh_staleness_window():
     db.commit()
     # last_successful is the most recent (now), so still fresh.
     assert kb_refresh.is_stale(db) is False
+
+
+def test_kb_upload_and_user_admin(client):
+    # Admin uploads a text document; it becomes a citable KB doc.
+    files = {"file": ("widgets.txt", b"The council owns 8,800 street widgets in 2025.", "text/plain")}
+    r = client.post("/admin/knowledge-base/upload", files=files, data={"title": "Street widgets 2025"})
+    assert r.status_code == 201 and r.json()["content_chars"] > 0
+
+    # Unsupported file types are rejected.
+    assert client.post("/admin/knowledge-base/upload",
+                       files={"file": ("x.exe", b"MZ\x00", "application/octet-stream")}).status_code == 415
+
+    # The uploaded document grounds a draft.
+    rid = client.post("/requests", json={"requester_name": "Q", "requester_email": "q@e.com",
+        "subject": "Widgets", "body": "1. How many street widgets does the council own?"}).json()["id"]
+    client.post(f"/requests/{rid}/triage")
+    client.post(f"/requests/{rid}/autodraft")
+    assert "8,800" in client.get(f"/requests/{rid}").json()["drafts"][0]["body"]
+
+    # Admin creates a subject-department account; it appears in the user list.
+    r = client.post("/admin/users", json={"username": "childrens", "password": "secret1",
+        "role": "department", "full_name": "Children's Services", "department": "Children's Services"})
+    assert r.status_code == 201 and r.json()["role"] == "department"
+    # Duplicate username and unknown role are rejected.
+    assert client.post("/admin/users", json={"username": "childrens", "password": "secret1",
+        "role": "department"}).status_code == 409
+    assert client.post("/admin/users", json={"username": "bad", "password": "secret1",
+        "role": "wizard"}).status_code == 422
+    assert any(u["username"] == "childrens" and u["department"] == "Children's Services"
+               for u in client.get("/admin/users").json())
+
+
+def test_department_role_contributes_but_is_not_admin():
+    # A department user holds READ + CONTRIBUTE only — can upload, but not
+    # administer users, delete docs, or do casework intake.
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False},
+                           poolclass=StaticPool, future=True)
+    Base.metadata.create_all(engine)
+    TestingSession = sessionmaker(bind=engine, future=True)
+
+    def _override():
+        s = TestingSession()
+        try:
+            yield s
+        finally:
+            s.close()
+
+    fastapi_app.dependency_overrides[get_db] = _override
+    dept = User(username="highways", full_name="Highways", role="department",
+                department="Highways", password_hash="x")
+    fastapi_app.dependency_overrides[auth.current_user] = lambda: dept
+    try:
+        c = TestClient(fastapi_app)
+        up = c.post("/admin/knowledge-base/upload",
+                    files={"file": ("note.txt", b"Highways maintains 412 km of cycleway.", "text/plain")})
+        assert up.status_code == 201 and up.json()["source"] == "department"
+        did = up.json()["id"]
+        # ADMIN-only actions are forbidden for a department user.
+        assert c.post("/admin/users", json={"username": "z", "password": "secret1",
+                                            "role": "department"}).status_code == 403
+        assert c.delete(f"/admin/knowledge-base/docs/{did}").status_code == 403
+        # No INTAKE capability -> cannot register a case.
+        assert c.post("/requests", json={"requester_name": "a", "requester_email": "a@e.com",
+            "subject": "s", "body": "1. q?"}).status_code == 403
+    finally:
+        fastapi_app.dependency_overrides.clear()
+        engine.dispose()

@@ -45,6 +45,13 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
         ("clock_paused_days", "INTEGER NOT NULL DEFAULT 0"),
         ("clarification_requested_at", "DATETIME"),
     ],
+    "users": [
+        ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),
+    ],
+    "knowledge_docs": [
+        ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),
+        ("uploaded_by", "VARCHAR(80) NOT NULL DEFAULT ''"),
+    ],
 }
 
 

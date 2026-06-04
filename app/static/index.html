@@ -194,6 +194,9 @@
     border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px rgba(15,23,42,.22);
     padding:12px 14px;font-size:12px;line-height:1.5;white-space:pre-wrap;color:var(--ink);pointer-events:none}
   @media(max-width:980px){.grid2{grid-template-columns:1fr}.dl-wrap{grid-template-columns:1fr}.lists{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+  /* Department contributors (no case access) see only the knowledge-base panel. */
+  body.kb-only #cards, body.kb-only #processPanel, body.kb-only .dl-wrap,
+  body.kb-only #analytics, body.kb-only .lists, body.kb-only #drawer{display:none !important}
 </style>
 </head>
 <body>
@@ -222,13 +225,13 @@
     <div class="btnrow"><button id="loginBtn" onclick="login()">Sign in</button></div>
     <div class="err" id="li_err"></div>
     <div class="hint">Starter accounts (dev — change in production): <b>caseworker</b>, <b>manager</b>,
-      <b>legal</b>, <b>foi</b>, <b>admin</b> — password same as the username.</div>
+      <b>legal</b>, <b>foi</b>, <b>highways</b> (a department), <b>admin</b> — password same as the username.</div>
   </div>
 </div>
 
 <section class="dash" id="dash" hidden>
   <div class="cards" id="cards"></div>
-  <div class="panel">
+  <div class="panel" id="processPanel">
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">Process — click a stage to see its cases</h2>
       <button class="ghost small" id="clearFilterBtn" hidden onclick="clearFilter()">Show all stages</button>
@@ -255,10 +258,10 @@
     </div>
   </div>
   <div class="panel" id="kbPanel" hidden>
-    <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" style="background:#0f3d57">admin</span></h2>
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" id="kbRoleChip" style="background:#0f3d57">contributor</span></h2>
       <span class="note" id="kbStats"></span></div>
-    <div class="note" style="margin:0 0 8px">Add facts the auto-drafter can ground on and cite. Stored as a “manual” source alongside crawled pages and published responses.</div>
-    <div class="cardhead" style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
+    <div class="note" style="margin:0 0 8px">Add facts or upload documents the auto-drafter can ground on and cite. A department’s uploads are stored as a “department” source, tagged with who and which department contributed them.</div>
+    <div class="cardhead" id="kbRefreshBox" hidden style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
       <div><strong>Public information</strong> <span class="note" id="kbFreshness">checking…</span></div>
       <button class="secondary small" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
     </div>
@@ -268,8 +271,37 @@
     </div>
     <label>Information / content</label>
     <textarea id="kb_content" placeholder="Paste the facts the drafter should be able to quote and cite…"></textarea>
-    <div class="btnrow"><button id="kbAddBtn" onclick="addKBDoc()">Add to knowledge base</button></div>
+    <div class="btnrow" style="gap:10px;align-items:center;flex-wrap:wrap">
+      <button id="kbAddBtn" onclick="addKBDoc()">Add to knowledge base</button>
+      <span class="note">or upload a document:</span>
+      <input type="file" id="kb_file" accept=".pdf,.docx,.txt,.md,.html,.htm" />
+      <button class="secondary" id="kbUploadBtn" onclick="uploadKBDoc()">Upload</button>
+    </div>
+    <div class="note" style="margin:6px 0 0">Accepts PDF, Word (.docx), text and HTML. Scanned/image-only PDFs aren’t supported (no OCR).</div>
     <div class="maillist" id="kbList" style="max-height:34vh;margin-top:12px"></div>
+  </div>
+
+  <!-- Admin: department & user accounts -->
+  <div class="panel" id="usersPanel" hidden style="margin-top:14px">
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Accounts <span class="rolechip" style="background:#0f3d57">admin</span></h2>
+      <span class="note" id="usersStats"></span></div>
+    <div class="note" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
+    <div class="grid2">
+      <div><label>Username</label><input id="nu_username" placeholder="e.g. childrens-services" /></div>
+      <div><label>Full name</label><input id="nu_fullname" placeholder="e.g. Children’s Services" /></div>
+      <div><label>Role</label><select id="nu_role">
+        <option value="department">department — upload documents</option>
+        <option value="caseworker">caseworker</option>
+        <option value="manager">manager</option>
+        <option value="legal_ig">legal_ig</option>
+        <option value="foi_team">foi_team</option>
+        <option value="admin">admin</option>
+      </select></div>
+      <div><label>Department (for department role)</label><input id="nu_department" placeholder="e.g. Children’s Services" /></div>
+      <div><label>Password</label><input id="nu_password" type="password" placeholder="min 6 characters" /></div>
+    </div>
+    <div class="btnrow"><button id="uAddBtn" onclick="addUser()">Create account</button></div>
+    <div class="maillist" id="usersList" style="max-height:28vh;margin-top:12px"></div>
   </div>
 </section>
 
@@ -380,12 +412,19 @@ function renderUser(){
 function startApp(){
   renderUser();
   document.getElementById("dash").hidden=false;
+  // Department contributors have no case access (CONTRIBUTE only): show them the
+  // knowledge-base panel alone, not the case dashboard / queue / requester data.
+  const caseUser=can("read");
+  document.body.classList.toggle("kb-only", !caseUser);
   document.getElementById("pollBtn").style.display = can("intake") ? "" : "none";
   document.getElementById("manualToggle").style.display = can("intake") ? "" : "none";
-  loadDashboard();
-  loadAnalytics();
-  loadKB();
-  loadQueue().then(loadInbox).then(()=>{ if(can("intake")) pollInbox(); });
+  if(caseUser){
+    loadDashboard();
+    loadAnalytics();
+    loadQueue().then(loadInbox).then(()=>{ if(can("intake")) pollInbox(); });
+  }
+  loadKB();      // contributors (department + admin)
+  loadUsers();   // admin only (self-gates)
 }
 
 function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
@@ -579,13 +618,18 @@ function renderAnalytics(){
 
 function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
 function barClick(el){ setFilter(el.dataset.kind, el.dataset.val, el.dataset.label); }
-function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); }
+function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); }
 
-const SOURCE_COLOR={manual:"#7c3aed",website:"#1d6fb8",published_response:"#0d9488"};
+const SOURCE_COLOR={manual:"#7c3aed",website:"#1d6fb8",published_response:"#0d9488",department:"#b45309"};
 async function loadKB(){
   const panel=document.getElementById("kbPanel");
-  if(!can("admin")){ panel.hidden=true; return; }
+  if(!can("contribute")){ panel.hidden=true; return; }   // department + admin
   panel.hidden=false;
+  const isAdmin=can("admin");
+  document.getElementById("kbRoleChip").textContent=me?me.role:"contributor";
+  // style.display, not [hidden]: the .cardhead class sets display and would
+  // override the hidden attribute (CSS specificity).
+  document.getElementById("kbRefreshBox").style.display=isAdmin?"":"none";  // public crawl is admin-only
   try{
     const stats=await api("/admin/knowledge-base");
     document.getElementById("kbStats").textContent=
@@ -594,11 +638,11 @@ async function loadKB(){
     const el=document.getElementById("kbList");
     el.innerHTML=docs.length? docs.map(d=>`<div class="qitem" style="cursor:default">
         <span class="pill" style="background:${SOURCE_COLOR[d.source]||'#64748b'};color:#fff;border:0">${d.source.replace('_',' ')}</span>
-        <span class="q-sub">${escapeHtml(d.title||"(untitled)")}</span>
-        <span class="q-meta">${d.content_chars.toLocaleString()} chars · ${d.chunks} chunks</span>
-        <button class="secondary small" onclick="deleteKBDoc(${d.id})">Delete</button></div>`).join("")
+        <span class="q-sub">${escapeHtml(d.title||"(untitled)")}${d.department?` · ${escapeHtml(d.department)}`:""}</span>
+        <span class="q-meta">${d.content_chars.toLocaleString()} chars · ${d.chunks} chunks${d.uploaded_by?` · by ${escapeHtml(d.uploaded_by)}`:""}</span>
+        ${isAdmin?`<button class="secondary small" onclick="deleteKBDoc(${d.id})">Delete</button>`:""}</div>`).join("")
       : '<div class="empty">No documents yet.</div>';
-    loadKBFreshness();
+    if(isAdmin) loadKBFreshness();
   }catch(e){ toast(e.message); }
 }
 async function loadKBFreshness(){
@@ -637,9 +681,59 @@ async function addKBDoc(){
   }catch(e){ toast(e.message); }
   finally{ btn.disabled=false; }
 }
+async function apiUpload(path, formData){           // multipart — no JSON content-type
+  const res=await fetch(API+path,{method:"POST",body:formData});
+  const data=await res.json().catch(()=>({}));
+  if(res.status===401){ showLogin(); throw new Error("Please sign in."); }
+  if(!res.ok) throw new Error(data.detail||("HTTP "+res.status));
+  return data;
+}
+async function uploadKBDoc(){
+  const inp=document.getElementById("kb_file");
+  if(!inp.files||!inp.files.length){ toast("Choose a file to upload."); return; }
+  const fd=new FormData(); fd.append("file", inp.files[0]);
+  const title=document.getElementById("kb_title").value.trim(); if(title) fd.append("title", title);
+  const btn=document.getElementById("kbUploadBtn"); btn.disabled=true; btn.textContent="Uploading…";
+  try{
+    const d=await apiUpload("/admin/knowledge-base/upload", fd);
+    inp.value=""; document.getElementById("kb_title").value="";
+    toast(`Uploaded “${d.title}” (${d.content_chars.toLocaleString()} chars${d.chunks?`, ${d.chunks} chunks indexed`:""}).`);
+    loadKB(); loadDashboard();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; btn.textContent="Upload"; }
+}
 async function deleteKBDoc(id){
   try{ await api(`/admin/knowledge-base/docs/${id}`,"DELETE"); toast("Removed from knowledge base."); loadKB(); loadDashboard(); }
   catch(e){ toast(e.message); }
+}
+async function loadUsers(){
+  const panel=document.getElementById("usersPanel");
+  if(!can("admin")){ panel.hidden=true; return; }
+  panel.hidden=false;
+  try{
+    const users=await api("/admin/users");
+    document.getElementById("usersStats").textContent=`${users.length} accounts`;
+    document.getElementById("usersList").innerHTML=users.map(u=>`<div class="qitem" style="cursor:default">
+        <span class="pill" style="background:#0f3d57;color:#fff;border:0">${escapeHtml(u.role)}</span>
+        <span class="q-sub">${escapeHtml(u.full_name||u.username)} <span class="note">(${escapeHtml(u.username)})</span></span>
+        <span class="q-meta">${u.department?escapeHtml(u.department):""}${u.is_active?"":" · inactive"}</span></div>`).join("");
+  }catch(e){ /* ignore for non-admins */ }
+}
+async function addUser(){
+  const username=document.getElementById("nu_username").value.trim();
+  const password=document.getElementById("nu_password").value;
+  const role=document.getElementById("nu_role").value;
+  const full_name=document.getElementById("nu_fullname").value.trim();
+  const department=document.getElementById("nu_department").value.trim();
+  if(!username||password.length<6){ toast("Enter a username and a password of at least 6 characters."); return; }
+  const btn=document.getElementById("uAddBtn"); btn.disabled=true;
+  try{
+    const u=await api("/admin/users","POST",{username,password,role,full_name,department});
+    ["nu_username","nu_password","nu_fullname","nu_department"].forEach(id=>document.getElementById(id).value="");
+    toast(`Created account “${u.username}” (${u.role}).`);
+    loadUsers();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; }
 }
 
 function setFilter(kind, value, label){

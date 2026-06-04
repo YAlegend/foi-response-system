@@ -135,6 +135,9 @@ class Settings(BaseSettings):
     # Skip pages whose extracted text is shorter than this — drops thin index /
     # listing / stub pages that add noise rather than groundable facts.
     ingest_min_content_chars: int = 400
+    # Also extract text from linked PDFs (reports/datasets) during the website
+    # crawl, so figures published only in a document are searchable. Needs pypdf.
+    ingest_pdfs: bool = True
 
 
 @lru_cache

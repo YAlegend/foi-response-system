@@ -73,6 +73,7 @@ class Role(str, enum.Enum):
     MANAGER = "manager"         # department approval
     LEGAL_IG = "legal_ig"       # final sign-off (Legal & Information Governance)
     FOI_TEAM = "foi_team"       # mailbox intake + dispatch
+    DEPARTMENT = "department"   # subject department: contribute documents to the KB
     ADMIN = "admin"             # everything + ingestion/index/user admin
 
 

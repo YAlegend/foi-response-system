@@ -147,6 +147,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(200), default="")
     password_hash: Mapped[str] = mapped_column(String(255))   # algo$iter$salt$hash
     role: Mapped[str] = mapped_column(String(20), default=Role.CASEWORKER.value)
+    department: Mapped[str] = mapped_column(String(120), default="")  # for role=department
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
@@ -167,11 +168,14 @@ class KnowledgeDoc(Base):
     __tablename__ = "knowledge_docs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    source: Mapped[str] = mapped_column(String(32), index=True)   # website|published_response|manual
+    source: Mapped[str] = mapped_column(String(32), index=True)   # website|published_response|manual|department
     url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     title: Mapped[str] = mapped_column(String(400), default="")
     content: Mapped[str] = mapped_column(Text)
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    # Provenance for documents contributed by a subject department (role=department).
+    department: Mapped[str] = mapped_column(String(120), default="")
+    uploaded_by: Mapped[str] = mapped_column(String(80), default="")
 
     chunks: Mapped[list["KnowledgeChunk"]] = relationship(
         back_populates="doc", cascade="all, delete-orphan", order_by="KnowledgeChunk.ordinal")

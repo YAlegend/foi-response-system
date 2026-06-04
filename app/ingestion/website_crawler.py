@@ -1,11 +1,13 @@
 """Source A — council website crawler (feature-flagged).
 
 A polite, rate-limited, same-domain crawler that extracts readable text from the
-council website into the knowledge base. It honours the site's robots.txt
-(including any crawl-delay) and identifies itself with a contactable User-Agent.
-Disabled unless both FOI_INGEST_ENABLED and FOI_INGEST_WEBSITE are true. Network
-libraries are imported lazily so the app has no hard dependency on them when
-ingestion is off.
+council website into the knowledge base — both **HTML pages** and **linked PDFs**
+(reports, datasets), so figures published only in a document are searchable too.
+It honours the site's robots.txt (including any crawl-delay) and identifies itself
+with a contactable User-Agent. Disabled unless both FOI_INGEST_ENABLED and
+FOI_INGEST_WEBSITE are true (PDFs additionally gated by FOI_INGEST_PDFS). Network
+and parsing libraries (httpx, bs4, pypdf) are imported lazily so the app has no
+hard dependency on them when ingestion is off.
 """
 from __future__ import annotations
 
@@ -13,8 +15,8 @@ import re
 import time
 from collections import deque
 from urllib import robotparser
-from urllib.parse import (parse_qsl, urldefrag, urlencode, urljoin, urlparse,
-                          urlunparse)
+from urllib.parse import (parse_qsl, unquote, urldefrag, urlencode, urljoin,
+                          urlparse, urlunparse)
 
 from sqlalchemy.orm import Session
 
@@ -89,6 +91,44 @@ def _load_robots(client, root: str, user_agent: str) -> robotparser.RobotFilePar
     return rp
 
 
+def _is_pdf_response(content_type: str, data: bytes) -> bool:
+    """True only if the fetched body is actually a PDF — by content-type or the
+    ``%PDF-`` magic bytes. A URL ending in .pdf is NOT enough: some CMSs serve
+    .pdf links as HTML viewer pages, and treating those as PDFs would drop the
+    page instead of ingesting its HTML."""
+    if "application/pdf" in content_type.lower():
+        return True
+    return data[:5] == b"%PDF-"
+
+
+def _extract_pdf_text(data: bytes) -> str:
+    """Extract text from PDF bytes. Returns '' if pypdf is unavailable or the file
+    can't be parsed. Scanned/image-only PDFs yield little or no text (no OCR), so
+    they fall below the content floor and are skipped — that is intended."""
+    try:
+        from pypdf import PdfReader  # lazy optional dep
+    except ImportError:
+        return ""
+    import io
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join((page.extract_text() or "") for page in reader.pages)
+    except Exception:
+        return ""
+
+
+def _pdf_title(raw_text: str, url: str) -> str:
+    """A readable title for a PDF: its first substantial line, else a tidied
+    filename derived from the URL."""
+    for line in raw_text.splitlines():
+        s = line.strip()
+        if len(s) >= 8:
+            return s[:200]
+    name = unquote(urlparse(url).path.rstrip("/").split("/")[-1])
+    name = name.rsplit(".", 1)[0].replace("-", " ").replace("_", " ").strip()
+    return name[:200] or url
+
+
 def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
           delay_seconds: float = 1.0) -> int:
     """Crawl the council website and upsert pages into the knowledge base.
@@ -143,7 +183,24 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
                 resp = client.get(url)
             except Exception:
                 continue
-            if resp.status_code != 200 or "text/html" not in resp.headers.get("content-type", ""):
+            if resp.status_code != 200:
+                continue
+            ctype = resp.headers.get("content-type", "")
+
+            # Documents (PDFs): extract their text so figures published only in a
+            # report/dataset are searchable too, not just HTML pages.
+            if s.ingest_pdfs and _is_pdf_response(ctype, resp.content):
+                raw = _extract_pdf_text(resp.content)
+                text = " ".join(raw.split())
+                if len(text) >= min_chars:
+                    knowledge_base.upsert(db, source="website",
+                                          title=_pdf_title(raw, url), content=text, url=url)
+                    ingested += 1
+                db.commit()
+                time.sleep(effective_delay)
+                continue
+
+            if "text/html" not in ctype:
                 continue
 
             soup = BeautifulSoup(resp.text, "html.parser")

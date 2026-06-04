@@ -47,7 +47,8 @@ production**):
 | `manager` | Department manager | approve (or request changes) |
 | `legal` | Legal & Information Governance | final sign-off |
 | `foi` | FOI team | mailbox intake + dispatch |
-| `admin` | Administrator | everything + ingestion / reindex |
+| `highways` | Subject department (example) | contribute/upload documents to the knowledge base — **no case access** |
+| `admin` | Administrator | everything + ingestion / reindex / user administration |
 
 Every audit-trail entry records the **actual signed-in user** — the actor is taken
 from the session, never the request body, so the trail is trustworthy for ICO
@@ -146,8 +147,9 @@ app/
     kb_refresh.py           keep the KB current: re-ingest + reindex, staleness + best-effort
     llm.py                  pluggable LLM provider (offline "stub" by default)
   ingestion/                Phase 0 — OFF by default
-    website_crawler.py      Source A: crawl the council website
+    website_crawler.py      Source A: crawl the council website (HTML pages + linked PDFs)
     published_responses.py  Source B: feed export (preferred) or browser render of the log
+    documents.py            extract text from uploaded files (PDF/Word/text/HTML)
     knowledge_base.py       store operations
   reindex.py                build the semantic chunk index (FOI_RETRIEVAL_PROVIDER=semantic)
   fetch_model.py            pre-download/vendor the embedding model for air-gap
@@ -241,6 +243,33 @@ the drafted answer. Re-run `python -m app.reindex` after ingesting new content.
 > is no grounding at all. The human review + compliance gate remain the real
 > safeguards. Re-measure both on your own knowledge base.
 
+## Department document contributions
+
+Much of what answers an FOI request is **not published on the website** — it sits
+with the responsible service as a report, spreadsheet export or letter. So each
+subject department gets its **own login** and can **upload those documents** into
+the knowledge base, where the drafter grounds on them like any other source.
+
+- **Accounts.** An admin creates a department account in the **Accounts** panel
+  (or `POST /admin/users` with `role=department` and a `department` name). The
+  example `highways` starter account shows the experience.
+- **Scope (data minimisation).** A department user holds the `contribute`
+  capability **only** — deliberately *not* `read`. They see a knowledge-base
+  contribution page and nothing else: no FOI cases, no requester personal data.
+  The backend enforces this (case endpoints return 403 for them), not just the UI.
+- **Upload.** Paste text, or upload a **PDF / Word (.docx) / text / HTML** file;
+  its text is extracted (`app/ingestion/documents.py`) and stored as a
+  `department` source, tagged with the uploader and department for provenance.
+  Image-only/scanned PDFs are rejected (no OCR). In semantic mode the upload is
+  indexed immediately.
+
+```bash
+# Admin creates a department account, then that user uploads a document:
+curl -X POST .../admin/users -H 'Content-Type: application/json' \
+  -d '{"username":"childrens","password":"…","role":"department","department":"Children'\''s Services"}'
+curl -X POST .../admin/knowledge-base/upload -F "file=@report.pdf" -F "title=Children in care 2025"
+```
+
 ## Keeping public information current (auto-refresh)
 
 Ingestion (above) is a one-off pull. To keep the knowledge base current, the
@@ -305,6 +334,14 @@ Drafting is template-driven and deterministic by default. To use a model for
 richer drafting or summaries, set `FOI_LLM_PROVIDER=anthropic` and implement the
 call in `app/services/llm.py` (a clearly marked stub is ready for it). The house
 style and compliance checks remain in force regardless of the model used.
+
+## Deployment
+
+For running the heavy public-information crawl on a server (and optionally
+hosting the app), see **[docs/deploy-digitalocean.md](docs/deploy-digitalocean.md)**
+— droplet setup, vendoring the model, systemd + nginx/TLS, the weekly crawl cron,
+and the information-governance split between a public-data **build box** and
+hosting live casework (which needs IG sign-off).
 
 ## Compliance notes
 

@@ -14,7 +14,8 @@ settings = get_settings()
 
 def _user_out(user) -> schemas.UserOut:
     return schemas.UserOut(username=user.username, full_name=user.full_name,
-                           role=user.role, capabilities=sorted(auth.role_caps(user.role)))
+                           role=user.role, department=user.department or "",
+                           capabilities=sorted(auth.role_caps(user.role)))
 
 
 @router.post("/login", response_model=schemas.UserOut)

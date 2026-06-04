@@ -16,7 +16,26 @@ class UserOut(BaseModel):
     username: str
     full_name: str
     role: str
+    department: str = ""
     capabilities: list[str] = []
+
+
+class UserCreateIn(BaseModel):
+    username: str = Field(..., min_length=2, max_length=80)
+    password: str = Field(..., min_length=6)
+    role: str
+    full_name: str = ""
+    department: str = ""
+
+
+class UserSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    full_name: str
+    role: str
+    department: str = ""
+    is_active: bool = True
 
 
 class RequestCreate(BaseModel):
@@ -146,6 +165,8 @@ class KnowledgeDocOut(BaseModel):
     title: str
     url: str | None
     ingested_at: datetime
+    department: str = ""
+    uploaded_by: str = ""
     content_chars: int = 0
     chunks: int = 0
 

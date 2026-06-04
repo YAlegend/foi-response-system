@@ -7,6 +7,8 @@ email-validator==2.3.0
 python-dateutil==2.9.0.post0
 httpx==0.28.1
 beautifulsoup4==4.12.3
+pypdf==5.1.0                 # extract text from linked PDFs during the website crawl
+python-multipart==0.0.20    # parse multipart/form-data for knowledge-base file uploads
 # Optional, only needed when INGEST_PUBLISHED_RESPONSES uses the browser fetcher:
 # playwright==1.49.1
 # Optional, only needed for FOI_RETRIEVAL_PROVIDER=semantic (offline embeddings):

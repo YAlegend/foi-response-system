@@ -31,16 +31,18 @@ settings = get_settings()
 # --- Capabilities: what a role may do -----------------------------------------
 
 class Cap:
-    READ = "read"          # view cases, queue, inbox, knowledge base
-    INTAKE = "intake"      # register a case, manage the mailbox (poll/import/link/dismiss)
-    PROCESS = "process"    # triage, auto-draft, SME update, run compliance checks
-    APPROVE = "approve"    # department manager approval
-    SIGN_OFF = "sign_off"  # final Legal & IG sign-off
-    DISPATCH = "dispatch"  # issue the response and close the case
-    ADMIN = "admin"        # ingestion, reindex, user administration
+    READ = "read"            # view cases, queue, inbox, knowledge base
+    INTAKE = "intake"        # register a case, manage the mailbox (poll/import/link/dismiss)
+    PROCESS = "process"      # triage, auto-draft, SME update, run compliance checks
+    APPROVE = "approve"      # department manager approval
+    SIGN_OFF = "sign_off"    # final Legal & IG sign-off
+    DISPATCH = "dispatch"    # issue the response and close the case
+    CONTRIBUTE = "contribute"  # add/upload documents to the knowledge base
+    ADMIN = "admin"          # ingestion, reindex, user administration
 
 
-_ALL = {Cap.READ, Cap.INTAKE, Cap.PROCESS, Cap.APPROVE, Cap.SIGN_OFF, Cap.DISPATCH, Cap.ADMIN}
+_ALL = {Cap.READ, Cap.INTAKE, Cap.PROCESS, Cap.APPROVE, Cap.SIGN_OFF, Cap.DISPATCH,
+        Cap.CONTRIBUTE, Cap.ADMIN}
 
 # Separation of duties: approve / sign-off / dispatch are deliberately different roles.
 ROLE_CAPS: dict[str, set[str]] = {
@@ -48,6 +50,10 @@ ROLE_CAPS: dict[str, set[str]] = {
     Role.MANAGER.value:    {Cap.READ, Cap.PROCESS, Cap.APPROVE},
     Role.LEGAL_IG.value:   {Cap.READ, Cap.SIGN_OFF},
     Role.FOI_TEAM.value:   {Cap.READ, Cap.INTAKE, Cap.DISPATCH},
+    # Subject departments contribute the source material the drafter grounds on,
+    # but do NO casework — CONTRIBUTE only, deliberately without READ, so they
+    # cannot see FOI cases or requesters' personal data (data minimisation).
+    Role.DEPARTMENT.value: {Cap.CONTRIBUTE},
     Role.ADMIN.value:      set(_ALL),
 }
 
@@ -85,9 +91,10 @@ def _utcnow() -> datetime:
 # --- User & session operations ------------------------------------------------
 
 def create_user(db: Session, *, username: str, password: str, role: str,
-                full_name: str = "") -> User:
+                full_name: str = "", department: str = "") -> User:
     user = User(username=username, full_name=full_name or username,
-                password_hash=hash_password(password), role=role)
+                password_hash=hash_password(password), role=role,
+                department=department or "")
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -152,13 +159,15 @@ def require(*caps: str):
 
 # --- Default starter accounts (dev only — change in production) ---------------
 
-# username, password, role, full name
+# username, password, role, full name, department
 DEFAULT_USERS = [
-    ("caseworker", "caseworker", Role.CASEWORKER.value, "Sam Caseworker"),
-    ("manager",    "manager",    Role.MANAGER.value,    "Morgan Manager"),
-    ("legal",      "legal",      Role.LEGAL_IG.value,   "Lee (Legal & IG)"),
-    ("foi",        "foi",        Role.FOI_TEAM.value,   "Frankie (FOI team)"),
-    ("admin",      "admin",      Role.ADMIN.value,      "Administrator"),
+    ("caseworker", "caseworker", Role.CASEWORKER.value, "Sam Caseworker", ""),
+    ("manager",    "manager",    Role.MANAGER.value,    "Morgan Manager", ""),
+    ("legal",      "legal",      Role.LEGAL_IG.value,   "Lee (Legal & IG)", ""),
+    ("foi",        "foi",        Role.FOI_TEAM.value,   "Frankie (FOI team)", ""),
+    # Example subject-department account; admins create one per real department.
+    ("highways",   "highways",   Role.DEPARTMENT.value, "Highways (Department)", "Highways"),
+    ("admin",      "admin",      Role.ADMIN.value,      "Administrator", ""),
 ]
 
 
@@ -168,6 +177,7 @@ def ensure_seed_users(db: Session) -> int:
         return 0
     if db.execute(select(User.id)).first():
         return 0
-    for username, password, role, full_name in DEFAULT_USERS:
-        create_user(db, username=username, password=password, role=role, full_name=full_name)
+    for username, password, role, full_name, department in DEFAULT_USERS:
+        create_user(db, username=username, password=password, role=role,
+                    full_name=full_name, department=department)
     return len(DEFAULT_USERS)
