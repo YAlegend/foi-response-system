@@ -14,7 +14,8 @@ from ..database import get_db
 from ..enums import Role
 from ..ingestion import (documents, knowledge_base, published_responses,
                          website_crawler, whatdotheyknow)
-from ..models import KnowledgeChunk, KnowledgeDoc, KnowledgeRefresh, User
+from ..models import (KnowledgeChunk, KnowledgeDoc, KnowledgeRefresh,
+                      SchemeNotification, User)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 settings = get_settings()
@@ -322,3 +323,34 @@ def ingest_wdtk(db: Session = Depends(get_db), user: User = Depends(require(Cap.
     except RuntimeError as exc:
         raise HTTPException(409, str(exc))
     return {"ingested": n, "source": "published_response", "via": "whatdotheyknow"}
+
+
+# --- Breach-trend notifications ------------------------------------------------
+
+@router.get("/notifications")
+def notifications_history(db: Session = Depends(get_db), user: User = Depends(require(Cap.READ))):
+    """Recent breach-trend notification events (sent alerts + recoveries).
+    With the stub provider, each alert row's `detail` is the message that would
+    have been emailed."""
+    rows = db.execute(select(SchemeNotification)
+                      .order_by(SchemeNotification.created_at.desc(), SchemeNotification.id.desc())
+                      .limit(50)).scalars().all()
+    return {
+        "provider": settings.notify_provider,
+        "enabled": settings.notify_enabled,
+        "recipients": [x.strip() for x in settings.notify_recipients.split(",") if x.strip()],
+        "events": [{
+            "scheme": r.scheme, "label": r.label, "event": r.event,
+            "recent": r.recent, "prior": r.prior, "breach_rate": r.breach_rate,
+            "channel": r.channel, "recipients": r.recipients, "subject": r.subject,
+            "detail": r.detail, "created_at": r.created_at,
+        } for r in rows],
+    }
+
+
+@router.post("/notifications/run")
+def notifications_run(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+    """Run the breach-trend notification check now (forced, even if the scheduled
+    job is disabled). Sends only on schemes that have newly started deteriorating."""
+    from ..services import notifications
+    return notifications.check_and_notify(db, force=True)

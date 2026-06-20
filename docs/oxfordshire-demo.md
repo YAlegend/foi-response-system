@@ -115,6 +115,16 @@ leading indicator before the overdue count climbs: *"📈 Breach trend rising �
 Traffic filters ▲ 0→3"*. The threshold lives in `analytics.trend_signal()`. The
 seed is shaped so traffic filters reads as deteriorating while ZEZ stays steady.
 
+**Email notification.** The same deterioration signal can notify a distribution
+list out-of-band. It's off by default with no egress: the `stub` provider
+*records* the message it would send (inspectable in the admin
+**Breach-trend notifications** panel and via `GET /admin/notifications`); set
+`FOI_NOTIFY_PROVIDER=smtp` + `FOI_NOTIFY_RECIPIENTS` + SMTP creds for real
+delivery. It is **idempotent** — a scheme already alerted isn't emailed again
+until it recovers and deteriorates anew — so it's safe to run from cron
+(`python -m app.notify`, hourly). Trigger on demand with the panel's *Run check
+now* button or `POST /admin/notifications/run`.
+
 A **"Scheme SLA performance"** table sits under the charts: per scheme it shows
 cases, open, **overdue** (open and past the statutory deadline), closed,
 **breach rate** (closed-late + currently-overdue ÷ total), **on-time %** (of
