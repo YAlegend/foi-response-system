@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401  (register mappers)
 from app.database import Base
-from app.routers.analytics import analytics
+from app.routers.analytics import analytics, trend_signal
 from app.routers.dashboard import dashboard
 from app.seed import _drive_to_close
 from app.services import casework
@@ -90,3 +90,14 @@ def test_breach_trend_sparkline(db):
     assert len(tf["trend"]) == 8
     # Every breach in the window is bucketed into exactly one week.
     assert sum(tf["trend"]) == tf["breached"] == 1
+
+
+def test_trend_signal_detects_deterioration():
+    # recent half > prior half and material (>=2) -> deteriorating
+    assert trend_signal([0, 0, 1, 0, 1, 2, 1, 0]) == (1, 4, True)
+    # rising but only one recent breach -> not material, no alarm
+    assert trend_signal([0, 0, 0, 0, 0, 0, 1, 0]) == (0, 1, False)
+    # breaches earlier, improving now -> not deteriorating
+    assert trend_signal([2, 1, 0, 0, 0, 0, 0, 0]) == (3, 0, False)
+    # steady (equal halves) -> not deteriorating
+    assert trend_signal([1, 0, 1, 0, 1, 0, 1, 0]) == (2, 2, False)

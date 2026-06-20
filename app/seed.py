@@ -172,11 +172,14 @@ def seed_demo_cases(db) -> int:
               "1. Where will the traffic filter cameras be sited?", 28)
     _drive_to_close(db, open_case("Traffic filter permit eligibility",
               "1. How many residents are eligible for a traffic filter permit?", 9))
+    # Recent closed-late cases (deadlines in the last few weeks) so traffic
+    # filters reads as *deteriorating* — recent breaches exceed the prior period.
     _drive_to_close(db, open_case("Traffic filter scheme cost to date",
-              "1. What has the traffic filter scheme cost so far?", 55))
+              "1. What has the traffic filter scheme cost so far?", 24))
     _drive_to_close(db, open_case("Traffic filter signage contractor",
-              "1. Which contractor supplied the traffic filter signage?", 45))
-    # ZEZ: two closed late (breaches in different weeks) + one open in amber.
+              "1. Which contractor supplied the traffic filter signage?", 22))
+    # ZEZ: two closed late spread across the window (one prior, one recent) so it
+    # reads as steady rather than deteriorating — a contrast to traffic filters.
     _drive_to_close(db, open_case("ZEZ penalty charge revenue",
               "1. How much net revenue did the Zero Emission Zone raise last year?", 30))
     _drive_to_close(db, open_case("ZEZ camera maintenance cost",

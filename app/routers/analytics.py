@@ -34,6 +34,19 @@ def _close_date(req: FOIRequest):
     return max(closed).date() if closed else None
 
 
+def trend_signal(trend: list[int]) -> tuple[int, int, bool]:
+    """Read a weekly breach-count series as (prior, recent, deteriorating).
+
+    Splits the window in half: ``prior`` is breaches in the earlier half,
+    ``recent`` the later half. A scheme is **deteriorating** when recent breaches
+    both exceed the prior period and are material (>= 2) — so a single late case
+    doesn't raise a false alarm, but a genuine upward trend does."""
+    half = len(trend) // 2
+    prior = sum(trend[:half])
+    recent = sum(trend[half:])
+    return prior, recent, (recent > prior and recent >= 2)
+
+
 @router.get("")
 def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.READ))):
     reqs = db.execute(select(FOIRequest)).scalars().all()
@@ -119,6 +132,8 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
             wk = dl - timedelta(days=dl.weekday())
             if wk in wk_breach:
                 wk_breach[wk] += 1
+        trend = [wk_breach[w] for w in weeks]
+        prior_b, recent_b, deteriorating = trend_signal(trend)
         sla_by_scheme.append({
             "key": key, "label": project_label(key),
             "total": sc["total"], "open": sc["open"], "closed": sc["closed"],
@@ -127,7 +142,9 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
             "breach_rate": round(breaches / sc["total"] * 100) if sc["total"] else 0,
             "avg_working_days_to_close": round(sum(sc["durations"]) / len(sc["durations"]), 1)
                                          if sc["durations"] else None,
-            "trend": [wk_breach[w] for w in weeks],
+            "trend": trend,
+            "prior_breaches": prior_b, "recent_breaches": recent_b,
+            "deteriorating": deteriorating,
         })
     sla_by_scheme.sort(key=lambda x: (-x["breach_rate"], -x["total"]))
 

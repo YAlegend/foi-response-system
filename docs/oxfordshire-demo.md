@@ -109,6 +109,12 @@ When any scheme-tagged case is past its statutory deadline, a red
 *"⚠ 1 overdue case is past the statutory deadline by scheme: [Traffic filters 1]"*
 — and each scheme chip clicks through to that scheme's cases in the queue.
 
+Below it, an amber **breach-trend alert** flags schemes that are *deteriorating*
+— breaches in the recent 4 weeks exceeding the prior 4 (and material, ≥2), a
+leading indicator before the overdue count climbs: *"📈 Breach trend rising —
+Traffic filters ▲ 0→3"*. The threshold lives in `analytics.trend_signal()`. The
+seed is shaped so traffic filters reads as deteriorating while ZEZ stays steady.
+
 A **"Scheme SLA performance"** table sits under the charts: per scheme it shows
 cases, open, **overdue** (open and past the statutory deadline), closed,
 **breach rate** (closed-late + currently-overdue ÷ total), **on-time %** (of
