@@ -341,6 +341,15 @@
     <div class="btnrow"><button id="uAddBtn" onclick="addUser()">Create account</button></div>
     <div class="maillist" id="usersList" style="max-height:28vh;margin-top:12px"></div>
   </div>
+
+  <!-- Admin: breach-trend notifications (email when a scheme deteriorates) -->
+  <div class="panel" id="notifyPanel" hidden style="margin-top:14px">
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Breach-trend notifications <span class="rolechip" style="background:#0f3d57">admin</span></h2>
+      <span class="note" id="notifyStats"></span></div>
+    <div class="note" style="margin:0 0 8px">Emails a distribution list when a scheme starts deteriorating (breaches trending up). Runs from cron (<code>python -m app.notify</code>) or on demand here. With the stub provider nothing is sent — the message that <em>would</em> be emailed is recorded below.</div>
+    <div class="btnrow"><button class="secondary small" id="notifyRunBtn" onclick="runNotifications()">Run check now</button></div>
+    <div class="maillist" id="notifyList" style="max-height:34vh;margin-top:12px"></div>
+  </div>
 </section>
 
 <div class="lists">
@@ -463,6 +472,7 @@ function startApp(){
   }
   loadKB();      // contributors (department + admin)
   loadUsers();   // admin only (self-gates)
+  loadNotifications();   // admin only (self-gates)
 }
 
 function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
@@ -733,7 +743,37 @@ function renderSchemeSLA(rows){
 
 function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
 function barClick(el){ setFilter(el.dataset.kind, el.dataset.val, el.dataset.label); }
-function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); }
+function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); loadNotifications(); }
+
+const NOTIFY_COLOR={alerted:"#b45309",resolved:"#15803d"};
+async function loadNotifications(){
+  const panel=document.getElementById("notifyPanel");
+  if(!can("admin")){ panel.hidden=true; return; }
+  panel.hidden=false;
+  try{
+    const r=await api("/admin/notifications");
+    const rcpt=r.recipients.length?r.recipients.join(", "):"(none set)";
+    document.getElementById("notifyStats").textContent=
+      `provider: ${r.provider} · ${r.enabled?"scheduled job on":"scheduled job off"} · to: ${rcpt}`;
+    const el=document.getElementById("notifyList");
+    el.innerHTML=r.events.length? r.events.map(e=>`<div class="qitem" style="cursor:default"${e.detail?` data-preview="${escapeAttr(e.detail)}"`:""}>
+        <span class="pill" style="background:${NOTIFY_COLOR[e.event]||'#64748b'};color:#fff;border:0">${e.event}</span>
+        <span class="q-sub">${escapeHtml(e.label||e.scheme)}${e.event==="alerted"?` · ${e.prior}→${e.recent} breaches · ${e.breach_rate}%`:""}</span>
+        <span class="q-meta">${e.channel}${e.recipients?` → ${escapeHtml(e.recipients)}`:""} · ${new Date(e.created_at).toLocaleString('en-GB')}</span>
+      </div>`).join("")
+      : '<div class="empty">No notifications yet — click “Run check now”.</div>';
+  }catch(e){ /* non-admins ignore */ }
+}
+async function runNotifications(){
+  const btn=document.getElementById("notifyRunBtn"); btn.disabled=true; btn.textContent="Running…";
+  try{
+    const r=await api("/admin/notifications/run","POST");
+    const a=r.alerted.length?`alerted: ${r.alerted.join(", ")}`:"no new alerts";
+    toast(`Notification check (${r.status}) — ${a}.`);
+    loadNotifications();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; btn.textContent="Run check now"; }
+}
 
 const SOURCE_COLOR={manual:"#7c3aed",website:"#1d6fb8",published_response:"#0d9488",department:"#b45309"};
 const STATUS_COLOR={approved:"#15803d",pending_review:"#b45309",rejected:"#b91c1c"};

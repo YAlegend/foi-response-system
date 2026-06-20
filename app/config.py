@@ -38,6 +38,24 @@ class Settings(BaseSettings):
         "Wilmslow, Cheshire, SK9 5AF"
     )
 
+    # --- Breach-trend notifications (default OFF; no egress until configured) ---
+    # When a scheme starts deteriorating (breaches trending up — see
+    # app/services/notifications.py), notify a distribution list. Triggered
+    # deliberately via `python -m app.notify` (cron) or POST /admin/notifications/
+    # run — never on a page load. Idempotent: a scheme already in an alerted state
+    # is not emailed again until it recovers and deteriorates anew.
+    #   "stub" -> record the message only, no send (offline default, safe in tests)
+    #   "smtp" -> send via SMTP (wire host/credentials below)
+    notify_enabled: bool = False
+    notify_provider: str = "stub"
+    notify_recipients: str = ""        # comma-separated, e.g. "ig@oxfordshire.gov.uk"
+    notify_from: str = "foi-no-reply@oxfordshire.gov.uk"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+
     # --- AI provider (pluggable) ---
     # "stub"    -> deterministic template drafting, no external calls (default)
     # "ollama"  -> local on-prem model; nothing leaves the council network

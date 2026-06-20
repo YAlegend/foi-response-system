@@ -232,3 +232,26 @@ class KnowledgeRefresh(Base):
     published_docs: Mapped[int] = mapped_column(Integer, default=0)
     chunks_indexed: Mapped[int] = mapped_column(Integer, default=0)
     detail: Mapped[str] = mapped_column(Text, default="")
+
+
+class SchemeNotification(Base):
+    """A breach-trend notification event for a scheme.
+
+    Both the audit trail of what was sent and the dedup state: a scheme is
+    considered "currently alerted" when its most recent event is "alerted", so it
+    is not emailed again until a later "resolved" event clears it (the scheme
+    recovered). Created by create_all() on existing databases without a migration."""
+    __tablename__ = "scheme_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scheme: Mapped[str] = mapped_column(String(120), index=True)
+    label: Mapped[str] = mapped_column(String(120), default="")
+    event: Mapped[str] = mapped_column(String(16), default="alerted")  # alerted|resolved
+    recent: Mapped[int] = mapped_column(Integer, default=0)
+    prior: Mapped[int] = mapped_column(Integer, default=0)
+    breach_rate: Mapped[int] = mapped_column(Integer, default=0)
+    channel: Mapped[str] = mapped_column(String(16), default="stub")
+    recipients: Mapped[str] = mapped_column(String(500), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
