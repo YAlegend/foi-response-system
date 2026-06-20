@@ -76,6 +76,7 @@ class RequestOut(BaseModel):
     body: str
     regime: str
     owning_department: str | None
+    project: str = ""
     holding_status: str
     confidence: float
     stage: str
@@ -156,6 +157,7 @@ class KnowledgeDocIn(BaseModel):
     title: str = Field("", max_length=400)
     content: str = Field(..., min_length=1)
     url: str | None = None
+    project: str = Field("", max_length=120)
 
 
 class KnowledgeDocOut(BaseModel):
@@ -167,8 +169,16 @@ class KnowledgeDocOut(BaseModel):
     ingested_at: datetime
     department: str = ""
     uploaded_by: str = ""
+    project: str = ""
+    status: str = "approved"
+    reviewed_by: str = ""
     content_chars: int = 0
     chunks: int = 0
+
+
+class KnowledgeReviewIn(BaseModel):
+    """A reviewer's decision on a pending department/project upload."""
+    note: str = Field("", max_length=500)
 
 
 class KnowledgeRefreshOut(BaseModel):

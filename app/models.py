@@ -32,6 +32,9 @@ class FOIRequest(Base):
 
     regime: Mapped[str] = mapped_column(String(8), default=Regime.FOIA.value)
     owning_department: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Scheme/initiative the request is about (traffic-filters, zez, ltn, ...),
+    # set at triage. Empty for general requests. Drives grouping and analytics.
+    project: Mapped[str] = mapped_column(String(120), default="", index=True)
     holding_status: Mapped[str] = mapped_column(String(16), default=HoldingStatus.UNKNOWN.value)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
 
@@ -176,6 +179,17 @@ class KnowledgeDoc(Base):
     # Provenance for documents contributed by a subject department (role=department).
     department: Mapped[str] = mapped_column(String(120), default="")
     uploaded_by: Mapped[str] = mapped_column(String(80), default="")
+    # Scheme/initiative a document belongs to (e.g. "traffic-filters", "zez").
+    # Lets the crawl tag project pages and a reviewer scope an upload to a project.
+    project: Mapped[str] = mapped_column(String(120), default="", index=True)
+    # Review gate. Public sources (council website, published FOI responses) are
+    # auto-"approved" — they are already public. Private department/project
+    # uploads land as "pending_review" and are INVISIBLE to retrieval until a
+    # reviewer approves them, so unvetted internal material can never ground a
+    # draft. "rejected" docs are kept for the audit trail but never retrieved.
+    status: Mapped[str] = mapped_column(String(20), default="approved", index=True)
+    reviewed_by: Mapped[str] = mapped_column(String(80), default="")
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     chunks: Mapped[list["KnowledgeChunk"]] = relationship(
         back_populates="doc", cascade="all, delete-orphan", order_by="KnowledgeChunk.ordinal")

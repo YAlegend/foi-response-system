@@ -1,6 +1,8 @@
 """Admin / Phase 0 ingestion endpoints (feature-flagged)."""
 from __future__ import annotations
 
+from collections import Counter, defaultdict
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -10,11 +12,58 @@ from ..auth import Cap, require
 from ..config import get_settings
 from ..database import get_db
 from ..enums import Role
-from ..ingestion import documents, knowledge_base, published_responses, website_crawler
+from ..ingestion import (documents, knowledge_base, published_responses,
+                         website_crawler, whatdotheyknow)
 from ..models import KnowledgeChunk, KnowledgeDoc, KnowledgeRefresh, User
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 settings = get_settings()
+
+
+def _kb_breakdown(db: Session) -> list[dict]:
+    """Group the knowledge base by **owning department -> scheme**, with counts.
+
+    A doc's scheme is its `project` tag; the scheme's owning department comes from
+    the project catalogue (config), falling back to the most common uploader
+    department for that scheme, then "Other". Untagged docs (public council
+    material with no scheme) collect under "General council information"."""
+    catalog = {c["key"]: c for c in get_settings().project_catalog}
+    rows = db.execute(
+        select(KnowledgeDoc.project, KnowledgeDoc.status, KnowledgeDoc.department,
+               func.count()).group_by(KnowledgeDoc.project, KnowledgeDoc.status,
+                                      KnowledgeDoc.department)).all()
+
+    per_project: dict[str, dict] = defaultdict(
+        lambda: {"total": 0, "approved": 0, "pending_review": 0, "depts": Counter()})
+    for project, status, dept, n in rows:
+        p = per_project[project or ""]
+        p["total"] += n
+        if status in ("approved", "pending_review"):
+            p[status] += n
+        if dept:
+            p["depts"][dept] += n
+
+    GENERAL = "General council information"
+    by_dept: dict[str, list] = defaultdict(list)
+    for key, c in per_project.items():
+        if not key:
+            owner, label = GENERAL, "(no scheme)"
+        else:
+            cat = catalog.get(key)
+            label = cat["label"] if cat else key
+            owner = (cat["department"] if cat
+                     else (c["depts"].most_common(1)[0][0] if c["depts"] else "Other"))
+        by_dept[owner].append({"key": key, "label": label, "total": c["total"],
+                               "approved": c["approved"], "pending_review": c["pending_review"]})
+
+    out = []
+    for owner in sorted(by_dept, key=lambda d: (d == GENERAL, d.lower())):
+        projects = sorted(by_dept[owner], key=lambda x: (x["key"] == "", x["label"].lower()))
+        out.append({"department": owner,
+                    "total": sum(p["total"] for p in projects),
+                    "pending_review": sum(p["pending_review"] for p in projects),
+                    "projects": projects})
+    return out
 
 
 @router.get("/knowledge-base")
@@ -23,11 +72,15 @@ def kb_stats(db: Session = Depends(get_db), user: User = Depends(require(Cap.CON
     indexed_docs = db.execute(
         select(func.count(func.distinct(KnowledgeChunk.doc_id)))).scalar_one()
     return {
+        "breakdown": _kb_breakdown(db),
         "total": knowledge_base.count(db),
         "website": knowledge_base.count(db, "website"),
         "published_responses": knowledge_base.count(db, "published_response"),
         "manual": knowledge_base.count(db, "manual"),
         "department": knowledge_base.count(db, "department"),
+        "approved": knowledge_base.count(db, status="approved"),
+        "pending_review": knowledge_base.count(db, status="pending_review"),
+        "rejected": knowledge_base.count(db, status="rejected"),
         "ingestion_enabled": settings.ingest_enabled,
         "retrieval_provider": settings.retrieval_provider,
         "indexed_docs": indexed_docs,
@@ -42,32 +95,31 @@ def _doc_out(doc: KnowledgeDoc) -> schemas.KnowledgeDocOut:
         id=doc.id, source=doc.source, title=doc.title, url=doc.url,
         ingested_at=doc.ingested_at,
         department=doc.department or "", uploaded_by=doc.uploaded_by or "",
+        project=doc.project or "", status=doc.status or "approved",
+        reviewed_by=doc.reviewed_by or "",
         content_chars=len(doc.content or ""), chunks=len(doc.chunks),
     )
 
 
 def _store_doc(db: Session, user: User, *, title: str, content: str,
-               url: str | None = None) -> KnowledgeDoc:
-    """Upsert a KB document with the contributor's provenance, and index it
-    immediately when running semantic retrieval. Shared by paste-add and upload.
+               url: str | None = None, project: str = "") -> KnowledgeDoc:
+    """Upsert a private KB upload with the contributor's provenance.
 
     A subject department's contributions are tagged source='department' (and with
-    the department + uploader), so the drafter — and the audit — can see where a
-    grounding fact came from. Admins curating general material use 'manual'."""
+    the department + uploader); admins curating general material use 'manual'.
+    Either way the upload lands as **pending_review** and is NOT indexed or
+    retrievable yet — it only grounds drafts once a reviewer approves it (see
+    `approve_doc`). This is the project/department review gate: unvetted internal
+    material can never leak into a published FOI response."""
     is_dept = user.role == Role.DEPARTMENT.value
     doc = knowledge_base.upsert(db, source="department" if is_dept else "manual",
-                                title=title or "(untitled)", content=content, url=url)
+                                title=title or "(untitled)", content=content, url=url,
+                                project=project, status="pending_review")
     doc.department = user.department or ""
     doc.uploaded_by = user.username
+    doc.status = "pending_review"   # force-pending even on re-upsert of an existing doc
     db.commit()
     db.refresh(doc)
-    if settings.retrieval_provider.lower() == "semantic":
-        try:
-            from ..reindex import index_doc
-            index_doc(db, doc)            # make it searchable immediately
-            db.refresh(doc)
-        except (RuntimeError, NotImplementedError):
-            pass                           # added; a full reindex will pick it up
     return doc
 
 
@@ -80,9 +132,10 @@ def list_docs(db: Session = Depends(get_db), user: User = Depends(require(Cap.CO
 @router.post("/knowledge-base/docs", response_model=schemas.KnowledgeDocOut, status_code=201)
 def add_doc(payload: schemas.KnowledgeDocIn, db: Session = Depends(get_db),
             user: User = Depends(require(Cap.CONTRIBUTE))):
-    """Add a knowledge document (pasted text) the drafter can ground on."""
+    """Add a private knowledge document (pasted text). Lands in the review queue
+    (pending_review); a reviewer must approve it before it can ground a draft."""
     return _doc_out(_store_doc(db, user, title=payload.title, content=payload.content,
-                               url=payload.url))
+                               url=payload.url, project=payload.project))
 
 
 # Uploads can be larger than pasted text; cap to keep a single doc sane.
@@ -91,11 +144,13 @@ _MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 @router.post("/knowledge-base/upload", response_model=schemas.KnowledgeDocOut, status_code=201)
 async def upload_doc(file: UploadFile = File(...), title: str = Form(""),
+                     project: str = Form(""),
                      db: Session = Depends(get_db),
                      user: User = Depends(require(Cap.CONTRIBUTE))):
-    """Upload a document (PDF / Word / text / HTML); its extracted text becomes a
-    knowledge document. For internal material the department holds that is not
-    published anywhere — the drafter grounds on it like any other source."""
+    """Upload a document (PDF / Word / text / HTML) for internal material the
+    department holds that is not published anywhere. Its extracted text becomes a
+    knowledge document in the review queue (pending_review) — optionally scoped to
+    a ``project`` — and only grounds drafts once a reviewer approves it."""
     suffix = documents._suffix(file.filename or "")
     if suffix not in documents.SUPPORTED:
         raise HTTPException(415, f"Unsupported file type '{suffix or file.filename}'. "
@@ -108,7 +163,64 @@ async def upload_doc(file: UploadFile = File(...), title: str = Form(""),
         raise HTTPException(422, "No readable text found in the file. Scanned/image-only "
                                  "PDFs aren't supported (no OCR); upload a text-based file.")
     title = title.strip() or (file.filename or "Uploaded document").rsplit(".", 1)[0]
-    return _doc_out(_store_doc(db, user, title=title, content=text))
+    return _doc_out(_store_doc(db, user, title=title, content=text, project=project.strip()))
+
+
+# --- Review gate: approve / reject pending department & project uploads --------
+
+@router.get("/knowledge-base/pending", response_model=list[schemas.KnowledgeDocOut])
+def list_pending(db: Session = Depends(get_db), user: User = Depends(require(Cap.CONTRIBUTE))):
+    """The review queue: private uploads awaiting approval before they can ground
+    a draft. Ordered oldest-first so the queue is worked in arrival order."""
+    docs = db.execute(
+        select(KnowledgeDoc).where(KnowledgeDoc.status == "pending_review")
+        .order_by(KnowledgeDoc.id)
+    ).scalars().all()
+    return [_doc_out(d) for d in docs]
+
+
+@router.post("/knowledge-base/docs/{doc_id}/approve", response_model=schemas.KnowledgeDocOut)
+def approve_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
+                db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+    """Approve a pending upload: mark it reviewed, make it retrievable, and (in
+    semantic mode) index it now so it is searchable immediately."""
+    from datetime import datetime, timezone
+    doc = db.get(KnowledgeDoc, doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if doc.status != "pending_review":
+        raise HTTPException(409, f"Document is '{doc.status}', not pending review.")
+    doc.status = "approved"
+    doc.reviewed_by = user.username
+    doc.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(doc)
+    if settings.retrieval_provider.lower() == "semantic":
+        try:
+            from ..reindex import index_doc
+            index_doc(db, doc)            # now searchable
+            db.refresh(doc)
+        except (RuntimeError, NotImplementedError):
+            pass                           # approved; a full reindex will pick it up
+    return _doc_out(doc)
+
+
+@router.post("/knowledge-base/docs/{doc_id}/reject", response_model=schemas.KnowledgeDocOut)
+def reject_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
+               db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+    """Reject a pending upload: it stays on record (audit) but is never retrieved.
+    Its chunks, if any, are cleared so it cannot ground a draft."""
+    from datetime import datetime, timezone
+    doc = db.get(KnowledgeDoc, doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    doc.status = "rejected"
+    doc.reviewed_by = user.username
+    doc.reviewed_at = datetime.now(timezone.utc)
+    doc.chunks.clear()
+    db.commit()
+    db.refresh(doc)
+    return _doc_out(doc)
 
 
 @router.delete("/knowledge-base/docs/{doc_id}")
@@ -199,3 +311,14 @@ def ingest_published(feed_dir: str | None = None, db: Session = Depends(get_db),
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
         raise HTTPException(409, str(exc))
     return {"ingested": n, "source": "published_response"}
+
+
+@router.post("/ingest/whatdotheyknow")
+def ingest_wdtk(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+    """Ingest already-published FOI Q&A from the WhatDoTheyKnow archive for the
+    configured authority (FOI_WHATDOTHEYKNOW_AUTHORITY)."""
+    try:
+        n = whatdotheyknow.ingest(db)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc))
+    return {"ingested": n, "source": "published_response", "via": "whatdotheyknow"}

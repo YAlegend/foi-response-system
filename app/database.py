@@ -44,6 +44,7 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
     "foi_requests": [
         ("clock_paused_days", "INTEGER NOT NULL DEFAULT 0"),
         ("clarification_requested_at", "DATETIME"),
+        ("project", "VARCHAR(120) NOT NULL DEFAULT ''"),
     ],
     "users": [
         ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),
@@ -51,6 +52,13 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
     "knowledge_docs": [
         ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),
         ("uploaded_by", "VARCHAR(80) NOT NULL DEFAULT ''"),
+        ("project", "VARCHAR(120) NOT NULL DEFAULT ''"),
+        # Existing rows pre-date the review gate and are already public/seeded,
+        # so they backfill as 'approved' (stay searchable). New private uploads
+        # are created 'pending_review' in code.
+        ("status", "VARCHAR(20) NOT NULL DEFAULT 'approved'"),
+        ("reviewed_by", "VARCHAR(80) NOT NULL DEFAULT ''"),
+        ("reviewed_at", "DATETIME"),
     ],
 }
 

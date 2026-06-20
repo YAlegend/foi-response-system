@@ -6,6 +6,8 @@ venv/
 .env
 .pytest_cache/
 .DS_Store
+# Local DB backups (e.g. foi.db.bak made before re-seeding)
+*.bak
 # Claude Code local/personal artifacts (not shared)
 .claude/settings.local.json
 .claude/*.lock

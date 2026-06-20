@@ -107,21 +107,33 @@ def test_kb_admin_add_list_cite_delete(client):
         "url": "https://example.gov.uk/lac"})
     assert add.status_code == 201
     doc = add.json()
+    # New: a private upload lands in the review queue, not straight into the corpus.
     assert doc["source"] == "manual" and doc["content_chars"] > 0
+    assert doc["status"] == "pending_review"
     doc_id = doc["id"]
 
-    # It appears in the admin listing.
+    # It appears in the admin listing and in the pending-review queue.
     listed = client.get("/admin/knowledge-base/docs").json()
     assert any(d["id"] == doc_id and d["source"] == "manual" for d in listed)
+    assert any(d["id"] == doc_id for d in client.get("/admin/knowledge-base/pending").json())
 
-    # A matching request grounds its draft on the manual doc and cites the figure.
-    rid = client.post("/requests", json={
-        "requester_name": "Sam", "requester_email": "sam@example.com",
-        "subject": "LAC", "body": "1. How many looked-after children did the council support?"
-    }).json()["id"]
-    client.post(f"/requests/{rid}/triage")
-    client.post(f"/requests/{rid}/autodraft")
-    draft = client.get(f"/requests/{rid}").json()["drafts"][0]
+    # While pending, it is INVISIBLE to retrieval: a matching request is not
+    # grounded on the unreviewed figure.
+    def _draft_for(body: str) -> dict:
+        rid = client.post("/requests", json={
+            "requester_name": "Sam", "requester_email": "sam@example.com",
+            "subject": "LAC", "body": body}).json()["id"]
+        client.post(f"/requests/{rid}/triage")
+        client.post(f"/requests/{rid}/autodraft")
+        return client.get(f"/requests/{rid}").json()["drafts"][0]
+
+    q = "1. How many looked-after children did the council support?"
+    assert "2,100" not in _draft_for(q)["body"]
+
+    # The reviewer approves it; now it grounds a draft and cites the figure.
+    appr = client.post(f"/admin/knowledge-base/docs/{doc_id}/approve")
+    assert appr.status_code == 200 and appr.json()["status"] == "approved"
+    draft = _draft_for(q)
     assert "2,100" in draft["body"]
     assert any(c["title"] == "Looked-after children" for c in draft["citations"])
 
@@ -186,16 +198,24 @@ def test_kb_upload_and_user_admin(client):
     r = client.post("/admin/knowledge-base/upload", files=files, data={"title": "Street widgets 2025"})
     assert r.status_code == 201 and r.json()["content_chars"] > 0
 
+    upload_id = r.json()["id"]
+    assert r.json()["status"] == "pending_review"
+
     # Unsupported file types are rejected.
     assert client.post("/admin/knowledge-base/upload",
                        files={"file": ("x.exe", b"MZ\x00", "application/octet-stream")}).status_code == 415
 
-    # The uploaded document grounds a draft.
-    rid = client.post("/requests", json={"requester_name": "Q", "requester_email": "q@e.com",
-        "subject": "Widgets", "body": "1. How many street widgets does the council own?"}).json()["id"]
-    client.post(f"/requests/{rid}/triage")
-    client.post(f"/requests/{rid}/autodraft")
-    assert "8,800" in client.get(f"/requests/{rid}").json()["drafts"][0]["body"]
+    def _widget_draft() -> str:
+        rid = client.post("/requests", json={"requester_name": "Q", "requester_email": "q@e.com",
+            "subject": "Widgets", "body": "1. How many street widgets does the council own?"}).json()["id"]
+        client.post(f"/requests/{rid}/triage")
+        client.post(f"/requests/{rid}/autodraft")
+        return client.get(f"/requests/{rid}").json()["drafts"][0]["body"]
+
+    # Pending: not grounded. After review approval: grounds the draft.
+    assert "8,800" not in _widget_draft()
+    assert client.post(f"/admin/knowledge-base/docs/{upload_id}/approve").status_code == 200
+    assert "8,800" in _widget_draft()
 
     # Admin creates a subject-department account; it appears in the user list.
     r = client.post("/admin/users", json={"username": "childrens", "password": "secret1",

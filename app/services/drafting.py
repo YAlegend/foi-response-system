@@ -12,11 +12,62 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..enums import HoldingStatus
 from ..models import FOIRequest
 from ..templates.response_template import QA, ResponseContext, render
 from ..textutil import split_sentences
-from . import retrieval
+from . import llm, retrieval
+
+# Returned when retrieval finds nothing, or the model refuses (cite-or-refuse).
+_NOT_LOCATED = ("[Information not located in the knowledge base — refer to "
+                "subject-matter expert.]")
+
+# Cite-or-refuse: the model answers ONLY from the retrieved council material and
+# refuses rather than guessing — the same governance as the Nagorik assistant.
+_LLM_SYSTEM = (
+    "You are an information officer at {council} drafting the answer to ONE "
+    "question within a Freedom of Information response. Answer ONLY from the "
+    "numbered SOURCES provided — council website pages and previously published "
+    "FOI responses. Quote any figures exactly as written. If the sources do not "
+    "contain the answer, reply with exactly the token NOT_FOUND and nothing else. "
+    "Never invent facts. Write two to four sentences of plain British English "
+    "suitable for an official letter."
+)
+
+
+def _grounded_prompt(question: str, hits: list, char_cap: int) -> str:
+    """Build the user prompt: the question plus numbered source passages, capped
+    in total length so a long page cannot blow the model's context budget."""
+    blocks: list[str] = []
+    used = 0
+    for i, h in enumerate(hits, 1):
+        snippet = (h.snippet or "").strip()
+        if used + len(snippet) > char_cap:
+            snippet = snippet[: max(0, char_cap - used)]
+        if not snippet:
+            break
+        used += len(snippet)
+        blocks.append(f"[{i}] {h.title}\n{snippet}")
+    sources = "\n\n".join(blocks)
+    return f"QUESTION:\n{question}\n\nSOURCES:\n{sources}\n\nANSWER:"
+
+
+def _llm_answer(question: str, hits: list) -> str:
+    """Synthesise a grounded answer from the retrieved sources via the configured
+    model. Falls back to the top passage on any model error so a draft is never
+    hard-blocked by an unreachable LLM."""
+    s = get_settings()
+    try:
+        out = llm.get_llm().complete(
+            _LLM_SYSTEM.format(council=s.council_name),
+            _grounded_prompt(question, hits, s.llm_source_char_cap),
+        ).strip()
+    except Exception:
+        return hits[0].snippet if hits else _NOT_LOCATED
+    if not out or out.upper().startswith("NOT_FOUND"):
+        return _NOT_LOCATED
+    return out
 
 _NUMBERED = re.compile(r"^\s*(?:\d+[.)]|[-*•])\s+")
 # Lines that are email scaffolding, not part of the request itself.
@@ -82,21 +133,24 @@ def build_draft(db: Session, request: FOIRequest) -> DraftResult:
     citations: list[dict] = []
     scores: list[float] = []
 
+    # With a model configured, pull several sources per question and let it
+    # synthesise across them (website + published precedents); otherwise the
+    # offline path grounds on the single best passage.
+    use_llm = llm.is_enabled()
+    k = 4 if use_llm else 1
     for q in questions:
-        hits = retrieval.retrieve(db, q, k=1)
+        hits = retrieval.retrieve(db, q, k=k)
         if hits:
             top = hits[0]
             scores.append(top.score)
-            qas.append(QA(question=q, answer=top.snippet, citation=top.title))
+            answer = _llm_answer(q, hits) if use_llm else top.snippet
+            qas.append(QA(question=q, answer=answer, citation=top.title))
             citations.append({"question": q, "title": top.title,
-                              "url": top.url, "score": top.score})
+                              "url": top.url, "score": top.score,
+                              "sources_considered": len(hits)})
         else:
             scores.append(0.0)
-            qas.append(QA(
-                question=q,
-                answer="[Information not located in the knowledge base — refer to "
-                       "subject-matter expert.]",
-            ))
+            qas.append(QA(question=q, answer=_NOT_LOCATED))
 
     confidence = round(sum(scores) / len(scores), 3) if scores else 0.0
     if confidence == 0:

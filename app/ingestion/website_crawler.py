@@ -117,6 +117,17 @@ def _extract_pdf_text(data: bytes) -> str:
         return ""
 
 
+def _project_for(url: str, project_seeds: list[tuple[str, str]]) -> str:
+    """Tag a crawled page with the scheme it belongs to: the project whose seed
+    URL is a prefix of this page's URL. Empty when the page is general council
+    content rather than part of a tracked scheme (traffic filters, ZEZ, ...)."""
+    for project, seed in project_seeds:
+        base = seed.rstrip("/")
+        if url == seed or url.startswith(base + "/"):
+            return project
+    return ""
+
+
 def _pdf_title(raw_text: str, url: str) -> str:
     """A readable title for a PDF: its first substantial line, else a tidied
     filename derived from the URL."""
@@ -155,6 +166,16 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
     domain = urlparse(root).netloc
     user_agent = s.ingest_user_agent
 
+    # Domains the crawl may follow into. The council site always; allow-listed
+    # related scheme/consultation sites only when crawl_follow_related is on — so
+    # a ZEZ link to the city council site is followed, but the open web is not.
+    allowed = {domain}
+    if s.crawl_follow_related:
+        allowed |= {d.lower() for d in s.crawl_related_domains}
+    # (project, normalised seed URL) pairs: queued first and used to tag pages.
+    project_seeds = [(seed["project"], _normalise(seed["url"]))
+                     for seed in s.crawl_project_seeds]
+
     seen: set[str] = set()
     ingested = 0
     headers = {"User-Agent": user_agent}
@@ -170,11 +191,14 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
         if s.ingest_use_sitemap:
             seeds = _collect_sitemap(client, urljoin(root, "/sitemap.xml"), max_pages * 5)
         seeds = seeds or [root]
-        queue: deque[str] = deque(_normalise(u) for u in seeds)
+        # Priority scheme pages first, then the sitemap/root, so demo-relevant
+        # content (traffic filters, ZEZ) is ingested even if the cap is reached.
+        ordered = [u for _p, u in project_seeds] + [_normalise(u) for u in seeds]
+        queue: deque[str] = deque(ordered)
 
         while queue and ingested < max_pages:
             url = _normalise(queue.popleft())
-            if url in seen or urlparse(url).netloc != domain:
+            if url in seen or urlparse(url).netloc not in allowed:
                 continue
             seen.add(url)
             if not robots.can_fetch(user_agent, url):
@@ -194,7 +218,8 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
                 text = " ".join(raw.split())
                 if len(text) >= min_chars:
                     knowledge_base.upsert(db, source="website",
-                                          title=_pdf_title(raw, url), content=text, url=url)
+                                          title=_pdf_title(raw, url), content=text, url=url,
+                                          project=_project_for(url, project_seeds))
                     ingested += 1
                 db.commit()
                 time.sleep(effective_delay)
@@ -210,12 +235,13 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
             text = " ".join(soup.get_text(" ").split())
             if len(text) >= min_chars:
                 knowledge_base.upsert(db, source="website", title=title,
-                                     content=text, url=url)
+                                     content=text, url=url,
+                                     project=_project_for(url, project_seeds))
                 ingested += 1
 
             for a in soup.find_all("a", href=True):
                 nxt = _normalise(urljoin(url, a["href"]))
-                if urlparse(nxt).netloc == domain and nxt not in seen:
+                if urlparse(nxt).netloc in allowed and nxt not in seen:
                     queue.append(nxt)
 
             db.commit()

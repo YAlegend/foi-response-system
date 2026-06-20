@@ -39,28 +39,44 @@ class Hit:
 
 
 def retrieve(db: Session, query: str, k: int = 5,
-             sources: list[str] | None = None) -> list[Hit]:
+             sources: list[str] | None = None,
+             project: str | None = None) -> list[Hit]:
     """Return the top-k knowledge docs for a query.
 
     Dispatches on the configured provider: the offline keyword ranker (default)
     or local semantic search. Both return the same ``Hit`` contract, so callers
     (drafting) are unchanged.
+
+    Only documents with status "approved" are ever returned: a private
+    department/project upload that has not been reviewed is invisible here, so it
+    can never ground a draft until a reviewer approves it. ``project`` optionally
+    restricts retrieval to one scheme's corpus.
     """
     if get_settings().retrieval_provider.lower() == "semantic":
-        return _retrieve_semantic(db, query, k, sources)
-    return _retrieve_keyword(db, query, k, sources)
+        return _retrieve_semantic(db, query, k, sources, project)
+    return _retrieve_keyword(db, query, k, sources, project)
+
+
+def _approved(stmt, sources: list[str] | None, project: str | None):
+    """Apply the retrieval-time filters shared by both rankers: approved-only,
+    optional source set, optional project scope."""
+    stmt = stmt.where(KnowledgeDoc.status == "approved")
+    if sources:
+        stmt = stmt.where(KnowledgeDoc.source.in_(sources))
+    if project:
+        stmt = stmt.where(KnowledgeDoc.project == project)
+    return stmt
 
 
 def _retrieve_keyword(db: Session, query: str, k: int,
-                      sources: list[str] | None) -> list[Hit]:
+                      sources: list[str] | None,
+                      project: str | None = None) -> list[Hit]:
     """Rank docs by token overlap with the query (dependency-free, offline)."""
     q_tokens = _tokens(query)
     if not q_tokens:
         return []
 
-    stmt = select(KnowledgeDoc)
-    if sources:
-        stmt = stmt.where(KnowledgeDoc.source.in_(sources))
+    stmt = _approved(select(KnowledgeDoc), sources, project)
     docs = db.execute(stmt).scalars().all()
 
     scored: list[Hit] = []
@@ -91,7 +107,8 @@ def _passage_answer(text: str, max_chars: int = 400) -> str:
 
 
 def _retrieve_semantic(db: Session, query: str, k: int,
-                       sources: list[str] | None) -> list[Hit]:
+                       sources: list[str] | None,
+                       project: str | None = None) -> list[Hit]:
     """Rank docs by embedding cosine similarity over their passages.
 
     Bridges the lexical gap (e.g. "potholes reported" vs "carriageway defect
@@ -108,8 +125,7 @@ def _retrieve_semantic(db: Session, query: str, k: int,
 
     stmt = (select(KnowledgeChunk, KnowledgeDoc)
             .join(KnowledgeDoc, KnowledgeChunk.doc_id == KnowledgeDoc.id))
-    if sources:
-        stmt = stmt.where(KnowledgeDoc.source.in_(sources))
+    stmt = _approved(stmt, sources, project)
 
     best: dict[int, tuple[float, KnowledgeChunk, KnowledgeDoc]] = {}
     for chunk, doc in db.execute(stmt).all():
