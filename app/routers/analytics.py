@@ -47,6 +47,8 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
     scheme: dict[str, dict] = defaultdict(
         lambda: {"total": 0, "open": 0, "closed": 0, "on_time": 0,
                  "late": 0, "overdue": 0, "durations": []})
+    # Deadline dates of breached cases per scheme, for the weekly breach trend.
+    scheme_breach_dates: dict[str, list] = defaultdict(list)
     clarifications = 0
     on_time = breached = 0
     close_durations: list[int] = []
@@ -67,6 +69,8 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
                         sc["on_time"] += 1
                     else:
                         sc["late"] += 1
+                        if r.deadline:
+                            scheme_breach_dates[r.project].append(r.deadline.date())
                     sc["durations"].append(working_days_between(r.received_at.date(), cd))
             else:
                 sc["open"] += 1
@@ -76,6 +80,8 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
                                paused_since=r.clarification_requested_at)
                 if st["flag"] == "breach" and not st["paused"]:
                     sc["overdue"] += 1
+                    if r.deadline:
+                        scheme_breach_dates[r.project].append(r.deadline.date())
         if (r.clock_paused_days or 0) > 0 or r.clarification_requested_at is not None:
             clarifications += 1
         if r.stage == Stage.CLOSED.value:
@@ -106,6 +112,13 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
     for key, sc in scheme.items():
         resolved = sc["on_time"] + sc["late"]
         breaches = sc["late"] + sc["overdue"]
+        # Weekly breach counts over the same 8-week window, bucketed by the week
+        # the case's deadline fell in (when the breach occurred).
+        wk_breach = {w: 0 for w in weeks}
+        for dl in scheme_breach_dates.get(key, []):
+            wk = dl - timedelta(days=dl.weekday())
+            if wk in wk_breach:
+                wk_breach[wk] += 1
         sla_by_scheme.append({
             "key": key, "label": project_label(key),
             "total": sc["total"], "open": sc["open"], "closed": sc["closed"],
@@ -114,6 +127,7 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
             "breach_rate": round(breaches / sc["total"] * 100) if sc["total"] else 0,
             "avg_working_days_to_close": round(sum(sc["durations"]) / len(sc["durations"]), 1)
                                          if sc["durations"] else None,
+            "trend": [wk_breach[w] for w in weeks],
         })
     sla_by_scheme.sort(key=lambda x: (-x["breach_rate"], -x["total"]))
 
@@ -127,6 +141,7 @@ def analytics(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
         "by_project": [{"label": project_label(k), "key": k, "value": v} for k, v in
                        sorted(by_project.items(), key=lambda kv: -kv[1])],
         "sla_by_scheme": sla_by_scheme,
+        "trend_weeks": [w.strftime("%d %b") for w in weeks],
         "intake_by_week": intake,
         "sla": {
             "closed": sum(1 for r in reqs if r.stage == Stage.CLOSED.value),

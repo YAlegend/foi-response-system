@@ -112,8 +112,10 @@ When any scheme-tagged case is past its statutory deadline, a red
 A **"Scheme SLA performance"** table sits under the charts: per scheme it shows
 cases, open, **overdue** (open and past the statutory deadline), closed,
 **breach rate** (closed-late + currently-overdue ÷ total), **on-time %** (of
-resolved cases) and **average working days to close**. Rows are clickable to
-filter the queue. The seed spreads demo cases across SLA states so it reads, for
+resolved cases), **average working days to close**, and an 8-week **breach-trend
+sparkline** (weekly breach counts, bucketed by the week each case's deadline
+fell in — so you can see whether a scheme is deteriorating). Rows are clickable
+to filter the queue. The seed spreads demo cases across SLA states so it reads, for
 example, *ZEZ 50% breach / 0% on-time / 29d* and *Traffic filters 33% breach,
 1 overdue / 100% on-time / 8d*.
 
