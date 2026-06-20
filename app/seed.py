@@ -165,21 +165,29 @@ def seed_demo_cases(db) -> int:
         casework.run_autodraft(db, rr, actor="demo")
         return rr
 
-    # Traffic filters: one overdue (open, breached) + one closed on time.
+    # Traffic filters: one overdue (open, breached) + one closed on time, plus
+    # two earlier closed-late cases so the breach-trend sparkline shows movement
+    # (their deadlines fall in different weeks).
     open_case("Traffic filter ANPR camera locations",
               "1. Where will the traffic filter cameras be sited?", 28)
     _drive_to_close(db, open_case("Traffic filter permit eligibility",
               "1. How many residents are eligible for a traffic filter permit?", 9))
-    # ZEZ: one closed late (breach) + one open in the amber band.
+    _drive_to_close(db, open_case("Traffic filter scheme cost to date",
+              "1. What has the traffic filter scheme cost so far?", 55))
+    _drive_to_close(db, open_case("Traffic filter signage contractor",
+              "1. Which contractor supplied the traffic filter signage?", 45))
+    # ZEZ: two closed late (breaches in different weeks) + one open in amber.
     _drive_to_close(db, open_case("ZEZ penalty charge revenue",
               "1. How much net revenue did the Zero Emission Zone raise last year?", 30))
+    _drive_to_close(db, open_case("ZEZ camera maintenance cost",
+              "1. How much is spent maintaining the Zero Emission Zone cameras?", 48))
     r = mk("ZEZ exemption application process",
            "1. How do I apply for a Zero Emission Zone exemption?", 13)
     casework.run_triage(db, r, actor="demo")   # open, amber band
     # LTN: one open, comfortably on track.
     open_case("LTN filter map",
               "1. Where are the low traffic neighbourhood filters in east Oxford?", 4)
-    return 10
+    return 13
 
 
 def _seed_published_foi(db) -> int:

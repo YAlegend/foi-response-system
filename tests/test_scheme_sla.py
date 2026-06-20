@@ -76,3 +76,17 @@ def test_overdue_by_scheme_alert(db):
     obs = {r["key"]: r["count"] for r in dashboard(db=db, user=None)["overdue_by_scheme"]}
     assert obs.get("traffic-filters") == 1
     assert "ltn" not in obs            # the recent case is not overdue
+
+
+def test_breach_trend_sparkline(db):
+    # A closed-late traffic-filters case: its deadline falls inside the 8-week window.
+    z = _case(db, "Traffic filter cost", "What has the traffic filter scheme cost so far?", 45)
+    casework.run_triage(db, z, actor="test"); casework.run_autodraft(db, z, actor="test")
+    _drive_to_close(db, z)
+
+    res = analytics(db=db, user=None)
+    assert len(res["trend_weeks"]) == 8
+    tf = next(r for r in res["sla_by_scheme"] if r["key"] == "traffic-filters")
+    assert len(tf["trend"]) == 8
+    # Every breach in the window is bucketed into exactly one week.
+    assert sum(tf["trend"]) == tf["breached"] == 1

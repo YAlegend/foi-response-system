@@ -604,6 +604,22 @@ const OUTCOME_COLOR={granted_full:"#15803d",granted_partial:"#0d9488",not_held:"
 let anData=null;   // latest /analytics payload
 let projectLabels={};   // scheme key -> display label, learned from analytics
 const projLabel=k=>projectLabels[k]||(k||"").replace(/-/g," ");
+let trendWeeks=[];      // week labels for the per-scheme breach-trend sparkline
+
+// Mini bar sparkline of weekly breach counts. Empty weeks show a faint tick so
+// the timeline reads left→right; breaches are red and scaled to the row's peak.
+function sparkBars(vals){
+  if(!vals||!vals.length) return "";
+  const max=Math.max(1,...vals), w=8, gap=2, h=22;
+  const W=vals.length*(w+gap)-gap;
+  const bars=vals.map((v,i)=>{
+    const bh=v?Math.max(3,Math.round(v/max*h)):1;
+    const wk=trendWeeks[i]||"";
+    return `<rect x="${i*(w+gap)}" y="${h-bh}" width="${w}" height="${bh}" rx="1"
+      fill="${v?'#dc2626':'#e2e8f0'}"><title>${wk}: ${v} breach${v===1?'':'es'}</title></rect>`;
+  }).join("");
+  return `<svg width="${W}" height="${h}" viewBox="0 0 ${W} ${h}" role="img" aria-label="weekly breaches">${bars}</svg>`;
+}
 
 async function loadAnalytics(){
   try{ anData=await api("/analytics"); renderAnalytics(); }catch(e){}
@@ -655,6 +671,7 @@ function renderAnalytics(){
     [a.clarifications,"Clarifications raised"],
   ].map(([n,l])=>`<div class="kpi"><div class="kpi-n">${n}</div><div class="kpi-l">${l}</div></div>`).join("");
   projectLabels=Object.fromEntries((a.by_project||[]).map(p=>[p.key,p.label]));
+  trendWeeks=a.trend_weeks||[];
   bars("ch_regime", a.by_regime, {colorFn:d=>d.label==="EIR"?"#15803d":"#1d6fb8", kind:"regime"});
   bars("ch_outcome", a.by_outcome, {colorFn:d=>OUTCOME_COLOR[d.key]||"#1d6fb8", kind:"outcome", valOf:d=>d.key});
   bars("ch_dept", a.by_department, {colorFn:()=>"#7c3aed", kind:"department"});
@@ -677,7 +694,8 @@ function renderSchemeSLA(rows){
   el.innerHTML=`<h3 class="ch-h" style="margin-top:4px">Scheme SLA performance — click a row to filter the queue</h3>
     <table class="sla-tbl"><thead><tr>
       <th style="text-align:left">Scheme</th><th>Cases</th><th>Open</th><th>Overdue</th>
-      <th>Closed</th><th>Breach rate</th><th>On-time</th><th>Avg days</th></tr></thead><tbody>`+
+      <th>Closed</th><th>Breach rate</th><th>On-time</th><th>Avg days</th>
+      <th>Breach trend (8 wk)</th></tr></thead><tbody>`+
     rows.map(s=>`<tr class="sla-row${fActive('project',s.key)?' active':''}"
         onclick="setFilter('project','${s.key}','${escapeAttr(s.label)}')">
       <td style="text-align:left">${escapeHtml(s.label)}</td>
@@ -687,6 +705,7 @@ function renderSchemeSLA(rows){
       <td><b style="color:${rateCol(s.breach_rate)}">${s.breach_rate}%</b></td>
       <td>${cell(s.on_time_pct,"%")}</td>
       <td>${cell(s.avg_working_days_to_close)}</td>
+      <td>${sparkBars(s.trend)}</td>
     </tr>`).join("")+`</tbody></table>`;
 }
 
