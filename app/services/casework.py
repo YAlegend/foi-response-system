@@ -63,8 +63,10 @@ def run_triage(db: Session, req: FOIRequest, actor: str = "system") -> dict:
     result = triage.classify(req.subject, req.body)
     req.regime = result.regime
     req.owning_department = result.department
+    req.project = result.project
     audit.log(db, req, actor=actor, action="triage:classified",
               detail=f"regime={result.regime}; dept={result.department}; "
+                     f"scheme={result.project or '—'}; "
                      f"cost_risk={result.cost_risk}; vexatious_risk={result.vexatious_risk}")
     db.add(req)
     db.commit()

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..enums import Regime
+from ..projects import detect_project
 
 # Keyword -> department routing table. Extend as needed.
 DEPARTMENT_KEYWORDS: dict[str, list[str]] = {
@@ -38,6 +39,7 @@ VEXATIOUS_RISK_KEYWORDS = ["again", "as before", "repeat", "previously requested
 class TriageResult:
     regime: str = Regime.FOIA.value
     department: str | None = None
+    project: str = ""
     cost_risk: bool = False
     vexatious_risk: bool = False
     matched_terms: list[str] = field(default_factory=list)
@@ -56,6 +58,12 @@ def classify(subject: str, body: str) -> TriageResult:
             best_dept, best_hits = dept, hits
             result.matched_terms = [kw for kw in kws if kw in text]
     result.department = best_dept
+
+    # Scheme/project (traffic filters, ZEZ, LTN, ...) — drives the case's scheme
+    # tag, used for grouping, filtering and per-scheme analytics.
+    result.project = detect_project(text)
+    if result.project:
+        result.notes.append(f"Relates to the {result.project} scheme.")
 
     # Regime
     if any(kw in text for kw in EIR_KEYWORDS):

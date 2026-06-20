@@ -10,6 +10,7 @@ from ..config import get_settings
 from ..database import get_db
 from ..enums import Stage
 from ..models import FOIRequest, User
+from ..projects import label as project_label
 from ..sla import sla_state
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -19,7 +20,7 @@ settings = get_settings()
 def _card(req: FOIRequest, st: dict) -> dict:
     return {
         "id": req.id, "reference": req.reference, "subject": req.subject,
-        "stage": req.stage, "deadline": st["deadline"],
+        "stage": req.stage, "project": req.project or "", "deadline": st["deadline"],
         "working_days_remaining": st["working_days_remaining"],
         "flag": st["flag"], "paused": st["paused"],
     }
@@ -34,6 +35,7 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
     sla = {"breach": 0, "red": 0, "amber": 0, "green": 0, "paused": 0}
     overdue: list[dict] = []
     due_soon: list[dict] = []
+    overdue_by_scheme: dict[str, int] = {}
     open_count = 0
 
     for r in reqs:
@@ -50,6 +52,8 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
             sla[st["flag"]] = sla.get(st["flag"], 0) + 1
         if st["flag"] == "breach" and not st["paused"]:
             overdue.append(_card(r, st))
+            if r.project:
+                overdue_by_scheme[r.project] = overdue_by_scheme.get(r.project, 0) + 1
         elif st["flag"] in ("amber", "red") and not st["paused"]:
             due_soon.append(_card(r, st))
 
@@ -73,4 +77,8 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(require(Cap.RE
             "due_soon": due_soon[:12],
             "due_soon_total": len(due_soon),
         },
+        "overdue_by_scheme": [
+            {"key": k, "label": project_label(k), "count": v}
+            for k, v in sorted(overdue_by_scheme.items(), key=lambda kv: -kv[1])
+        ],
     }

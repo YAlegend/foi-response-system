@@ -49,7 +49,7 @@ def test_rendered_letter_contains_house_style_elements():
     assert "Re-use of information" in letter
     assert "internal review" in letter
     assert "Information Commissioner" in letter
-    assert "County Hall, Pegs Lane, Hertford, SG13 8DQ" in letter
+    assert "County Hall, New Road, Oxford, OX1 1ND" in letter
     assert "FOI/2026/00001" in letter
 
 

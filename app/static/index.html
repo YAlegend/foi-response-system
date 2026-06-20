@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>FOI Case Management — Hertfordshire County Council</title>
+<title>FOI Case Management — Oxfordshire County Council</title>
 <style>
   :root{
     --navy:#0f3d57; --navy2:#15506f; --blue:#1d6fb8; --amber:#b45309;
@@ -83,6 +83,11 @@
   .banner{padding:8px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;font-weight:600}
   .banner.pause{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
   .banner.review{background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe}
+  .banner.alert{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .banner.alert .achip{cursor:pointer;background:#fff;border:1px solid #fecaca;border-radius:999px;
+    padding:3px 10px;font-size:12px;font-weight:700;color:#b91c1c}
+  .banner.alert .achip:hover{background:#b91c1c;color:#fff;border-color:#b91c1c}
+  .banner.alert .achip.active{background:#b91c1c;color:#fff}
   .pill.paused{background:#fef3c7;color:#92400e;border-color:#fde68a}
   #overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;
     justify-content:center;z-index:100}
@@ -155,6 +160,12 @@
   .donut{flex:0 0 auto} .donut-num{font:800 19px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
   .donut-lbl{font:600 9px "Segoe UI",system-ui,sans-serif;fill:var(--grey);text-transform:uppercase;letter-spacing:.4px}
   .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px 22px}
+  .sla-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .sla-tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--grey);text-align:center;padding:6px;border-bottom:1px solid var(--line)}
+  .sla-tbl td{text-align:center;padding:7px 6px;border-bottom:1px solid var(--line)}
+  .sla-row{cursor:pointer}
+  .sla-row:hover{background:#f0f7ff}
+  .sla-row.active{background:#e0efff;box-shadow:inset 3px 0 0 var(--blue)}
   .ch-h{font-size:12px;color:var(--ink);margin:0 0 8px;font-weight:700}
   .bar-row{display:grid;grid-template-columns:120px 1fr 32px;gap:8px;align-items:center;margin-bottom:5px;border-radius:6px}
   .bar-row.click{cursor:pointer;padding:1px 4px;margin-left:-4px}
@@ -197,13 +208,19 @@
   /* Department contributors (no case access) see only the knowledge-base panel. */
   body.kb-only #cards, body.kb-only #processPanel, body.kb-only .dl-wrap,
   body.kb-only #analytics, body.kb-only .lists, body.kb-only #drawer{display:none !important}
+  /* Collapsible panels: hide everything but the header row when collapsed. */
+  .panel.collapsed > :not(.cardhead):not(h2.dash-h){display:none !important}
+  .panel-head-click{cursor:pointer}
+  .caret{display:inline-block;width:1em;margin-right:2px;color:#94a3b8;font-size:.8em;
+    transition:transform .15s ease}
+  .panel.collapsed .caret{transform:rotate(-90deg)}
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Freedom of Information — Case Management</h1>
-    <div class="sub">Hertfordshire County Council · Information Governance Unit</div>
+    <div class="sub">Oxfordshire County Council · Information Management Team</div>
   </div>
   <div class="userbox" id="userbox" hidden>
     <span><b id="u_name"></b> <span class="rolechip" id="u_role"></span></span>
@@ -230,6 +247,7 @@
 </div>
 
 <section class="dash" id="dash" hidden>
+  <div id="overdueAlert"></div>
   <div class="cards" id="cards"></div>
   <div class="panel" id="processPanel">
     <div class="cardhead">
@@ -254,21 +272,35 @@
       <div><h3 class="ch-h">By regime</h3><div id="ch_regime"></div></div>
       <div><h3 class="ch-h">Outcomes (closed)</h3><div id="ch_outcome"></div></div>
       <div><h3 class="ch-h">By department</h3><div id="ch_dept"></div></div>
+      <div><h3 class="ch-h">By scheme</h3><div id="ch_project"></div></div>
       <div><h3 class="ch-h">Requests received (last 8 weeks)</h3><div id="ch_intake"></div></div>
     </div>
+    <div id="schemeSLA" style="margin-top:18px"></div>
   </div>
   <div class="panel" id="kbPanel" hidden>
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" id="kbRoleChip" style="background:#0f3d57">contributor</span></h2>
       <span class="note" id="kbStats"></span></div>
-    <div class="note" style="margin:0 0 8px">Add facts or upload documents the auto-drafter can ground on and cite. A department’s uploads are stored as a “department” source, tagged with who and which department contributed them.</div>
+    <div class="note" style="margin:0 0 8px">Add facts or upload documents the auto-drafter can ground on and cite. Private uploads are <strong>submitted for review</strong> and are not used in any draft until a reviewer approves them. Tag a document to a project/scheme to scope it.</div>
     <div class="cardhead" id="kbRefreshBox" hidden style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
       <div><strong>Public information</strong> <span class="note" id="kbFreshness">checking…</span></div>
       <button class="secondary small" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
     </div>
+    <!-- Knowledge grouped by owning department -> scheme; click a scheme to filter. -->
+    <div id="kbBreakdown" style="margin:0 0 12px"></div>
+    <!-- Review queue: private uploads awaiting approval before they can ground a draft. -->
+    <div id="kbPendingBox" hidden style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;margin:0 0 12px">
+      <div class="cardhead" style="margin:0 0 6px">
+        <strong style="color:#9a3412">⏳ Awaiting review <span id="kbPendingCount" class="count" style="background:#b45309">0</span></strong>
+        <span class="note">Approve to add to the searchable corpus · reject to keep it out</span>
+      </div>
+      <div class="maillist" id="kbPending" style="max-height:30vh"></div>
+    </div>
     <div class="grid2">
-      <div><label>Title</label><input id="kb_title" placeholder="e.g. Council tax bands 2026/27" /></div>
+      <div><label>Title</label><input id="kb_title" placeholder="e.g. Traffic filter exemptions 2026" /></div>
       <div><label>Source URL (optional)</label><input id="kb_url" placeholder="https://… (for the citation)" /></div>
     </div>
+    <label>Project / scheme (optional)</label>
+    <input id="kb_project" placeholder="e.g. traffic-filters, zez — scopes the document to one scheme" />
     <label>Information / content</label>
     <textarea id="kb_content" placeholder="Paste the facts the drafter should be able to quote and cite…"></textarea>
     <div class="btnrow" style="gap:10px;align-items:center;flex-wrap:wrap">
@@ -520,8 +552,22 @@ async function loadDashboard(){
 
 function fActive(kind,value){ return activeFilter && activeFilter.kind===kind && activeFilter.value===value; }
 
+function renderOverdueAlert(){
+  const el=document.getElementById("overdueAlert");
+  const rows=(dashData&&dashData.overdue_by_scheme)||[];
+  if(!rows.length){ el.innerHTML=""; return; }
+  const total=rows.reduce((n,r)=>n+r.count,0);
+  const chips=rows.map(r=>`<span class="achip${fActive('project',r.key)?' active':''}"
+      onclick="setFilter('project','${r.key}','${escapeAttr(r.label)}')"
+      title="View ${escapeHtml(r.label)} cases">${escapeHtml(r.label)} ${r.count}</span>`).join("");
+  el.innerHTML=`<div class="banner alert">
+    <span>⚠ <b>${total} overdue</b> ${total===1?"case is":"cases are"} past the statutory deadline by scheme — click to review:</span>
+    ${chips}</div>`;
+}
+
 function renderDashboard(){
   if(!dashData) return;
+  renderOverdueAlert();
   const t=dashData.totals, sla=dashData.sla;
   // [card class, count, label, filter kind, filter value, filter label]
   const cards=[
@@ -556,6 +602,8 @@ function renderDeadlines(elId,countId,items,total){
 
 const OUTCOME_COLOR={granted_full:"#15803d",granted_partial:"#0d9488",not_held:"#64748b",refused:"#b91c1c",open:"#1d6fb8"};
 let anData=null;   // latest /analytics payload
+let projectLabels={};   // scheme key -> display label, learned from analytics
+const projLabel=k=>projectLabels[k]||(k||"").replace(/-/g," ");
 
 async function loadAnalytics(){
   try{ anData=await api("/analytics"); renderAnalytics(); }catch(e){}
@@ -606,14 +654,40 @@ function renderAnalytics(){
     [s.breached,"Closed late"],
     [a.clarifications,"Clarifications raised"],
   ].map(([n,l])=>`<div class="kpi"><div class="kpi-n">${n}</div><div class="kpi-l">${l}</div></div>`).join("");
+  projectLabels=Object.fromEntries((a.by_project||[]).map(p=>[p.key,p.label]));
   bars("ch_regime", a.by_regime, {colorFn:d=>d.label==="EIR"?"#15803d":"#1d6fb8", kind:"regime"});
   bars("ch_outcome", a.by_outcome, {colorFn:d=>OUTCOME_COLOR[d.key]||"#1d6fb8", kind:"outcome", valOf:d=>d.key});
   bars("ch_dept", a.by_department, {colorFn:()=>"#7c3aed", kind:"department"});
+  bars("ch_project", a.by_project, {colorFn:()=>"#0891b2", kind:"project", valOf:d=>d.key});
   bars("ch_intake", a.intake_by_week, {colorFn:()=>"#0d9488"});
+  renderSchemeSLA(a.sla_by_scheme);
   requestAnimationFrame(()=>{
     document.querySelectorAll("#analytics .bar-fill[data-w]").forEach(b=>b.style.width=b.dataset.w);
     const p=document.querySelector("#donut circle[data-off]"); if(p) p.style.strokeDashoffset=p.dataset.off;
   });
+}
+
+function renderSchemeSLA(rows){
+  const el=document.getElementById("schemeSLA");
+  if(!el) return;
+  if(!rows||!rows.length){ el.innerHTML=""; return; }
+  const dash='<span style="color:#94a3b8">—</span>';
+  const cell=(v,suf="")=>v==null?dash:v+suf;
+  const rateCol=r=>r>=50?"#b91c1c":r>=20?"#b45309":"#15803d";
+  el.innerHTML=`<h3 class="ch-h" style="margin-top:4px">Scheme SLA performance — click a row to filter the queue</h3>
+    <table class="sla-tbl"><thead><tr>
+      <th style="text-align:left">Scheme</th><th>Cases</th><th>Open</th><th>Overdue</th>
+      <th>Closed</th><th>Breach rate</th><th>On-time</th><th>Avg days</th></tr></thead><tbody>`+
+    rows.map(s=>`<tr class="sla-row${fActive('project',s.key)?' active':''}"
+        onclick="setFilter('project','${s.key}','${escapeAttr(s.label)}')">
+      <td style="text-align:left">${escapeHtml(s.label)}</td>
+      <td>${s.total}</td><td>${s.open}</td>
+      <td>${s.overdue?`<b style="color:#b91c1c">${s.overdue}</b>`:0}</td>
+      <td>${s.closed}</td>
+      <td><b style="color:${rateCol(s.breach_rate)}">${s.breach_rate}%</b></td>
+      <td>${cell(s.on_time_pct,"%")}</td>
+      <td>${cell(s.avg_working_days_to_close)}</td>
+    </tr>`).join("")+`</tbody></table>`;
 }
 
 function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
@@ -621,6 +695,15 @@ function barClick(el){ setFilter(el.dataset.kind, el.dataset.val, el.dataset.lab
 function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); }
 
 const SOURCE_COLOR={manual:"#7c3aed",website:"#1d6fb8",published_response:"#0d9488",department:"#b45309"};
+const STATUS_COLOR={approved:"#15803d",pending_review:"#b45309",rejected:"#b91c1c"};
+function sourcePill(s){return `<span class="pill" style="background:${SOURCE_COLOR[s]||'#64748b'};color:#fff;border:0">${s.replace('_',' ')}</span>`;}
+function statusPill(s){return s?`<span class="pill" style="background:${STATUS_COLOR[s]||'#64748b'};color:#fff;border:0">${s.replace('_',' ')}</span>`:"";}
+function projectPill(p){return p?`<span class="pill">${escapeHtml(p)}</span>`:"";}
+
+let kbDocs=[];               // cached doc list, so scheme filtering doesn't refetch
+let kbBreakdownData=[];      // dept -> scheme breakdown from the stats endpoint
+let kbProjectFilter=null;    // null = all; "" = untagged; otherwise a scheme key
+
 async function loadKB(){
   const panel=document.getElementById("kbPanel");
   if(!can("contribute")){ panel.hidden=true; return; }   // department + admin
@@ -632,17 +715,92 @@ async function loadKB(){
   document.getElementById("kbRefreshBox").style.display=isAdmin?"":"none";  // public crawl is admin-only
   try{
     const stats=await api("/admin/knowledge-base");
-    document.getElementById("kbStats").textContent=
-      `${stats.total} docs · ${stats.indexed_chunks} indexed chunks · retrieval: ${stats.retrieval_provider}`;
-    const docs=await api("/admin/knowledge-base/docs");
-    const el=document.getElementById("kbList");
-    el.innerHTML=docs.length? docs.map(d=>`<div class="qitem" style="cursor:default">
-        <span class="pill" style="background:${SOURCE_COLOR[d.source]||'#64748b'};color:#fff;border:0">${d.source.replace('_',' ')}</span>
-        <span class="q-sub">${escapeHtml(d.title||"(untitled)")}${d.department?` · ${escapeHtml(d.department)}`:""}</span>
+    const pendTxt=stats.pending_review?` · <b style="color:#b45309">${stats.pending_review} awaiting review</b>`:"";
+    document.getElementById("kbStats").innerHTML=
+      `${stats.total} docs · ${stats.indexed_chunks} indexed chunks · retrieval: ${stats.retrieval_provider}${pendTxt}`;
+    kbBreakdownData=stats.breakdown||[];
+    renderKBBreakdown();
+    kbDocs=await api("/admin/knowledge-base/docs");
+    renderKBList();
+    await loadKBPending(isAdmin);
+    if(isAdmin) loadKBFreshness();
+  }catch(e){ toast(e.message); }
+}
+
+// Knowledge grouped by owning department → scheme; each scheme chip filters the list.
+function renderKBBreakdown(){
+  const el=document.getElementById("kbBreakdown");
+  if(!kbBreakdownData.length){ el.innerHTML=""; return; }
+  el.innerHTML=`<div class="note" style="margin:0 0 6px">Knowledge by department &amp; scheme — click a scheme to filter</div>`+
+    kbBreakdownData.map(d=>`
+      <div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <strong style="font-size:12.5px;color:var(--navy)">${escapeHtml(d.department)}</strong>
+          <span class="note">${d.total} doc${d.total===1?"":"s"}${d.pending_review?` · <b style="color:#b45309">${d.pending_review} pending</b>`:""}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+          ${d.projects.map(p=>{
+            const active=kbProjectFilter===p.key;
+            const sty=active?"background:#1d6fb8;color:#fff;border-color:#1d6fb8":"";
+            return `<span class="pill" style="cursor:pointer;${sty}" title="${p.total} document${p.total===1?"":"s"}"
+              onclick="filterKBProject('${p.key}')">${escapeHtml(p.label)} <b>${p.total}</b>${p.pending_review?` · <span style="color:${active?'#fde68a':'#b45309'}">${p.pending_review}⏳</span>`:""}</span>`;
+          }).join("")}
+        </div>
+      </div>`).join("");
+}
+
+function filterKBProject(key){
+  kbProjectFilter = (kbProjectFilter===key) ? null : key;
+  renderKBBreakdown(); renderKBList();
+}
+
+function renderKBList(){
+  const isAdmin=can("admin");
+  const docs = kbProjectFilter===null ? kbDocs : kbDocs.filter(d=>(d.project||"")===kbProjectFilter);
+  const el=document.getElementById("kbList");
+  const hdr = kbProjectFilter===null ? "" :
+    `<div class="note" style="margin:0 0 6px">Filtered to scheme: <b>${escapeHtml(kbProjectFilter||"(no scheme)")}</b>
+      <span class="qfilter" onclick="filterKBProject(${kbProjectFilter===""?'""':`'${kbProjectFilter}'`})">✕ clear</span></div>`;
+  el.innerHTML=hdr+(docs.length? docs.map(d=>`<div class="qitem" style="cursor:default">
+        ${sourcePill(d.source)}${statusPill(d.status)}
+        <span class="q-sub">${escapeHtml(d.title||"(untitled)")} ${projectPill(d.project)}${d.department?` · ${escapeHtml(d.department)}`:""}</span>
         <span class="q-meta">${d.content_chars.toLocaleString()} chars · ${d.chunks} chunks${d.uploaded_by?` · by ${escapeHtml(d.uploaded_by)}`:""}</span>
         ${isAdmin?`<button class="secondary small" onclick="deleteKBDoc(${d.id})">Delete</button>`:""}</div>`).join("")
-      : '<div class="empty">No documents yet.</div>';
-    if(isAdmin) loadKBFreshness();
+      : '<div class="empty">No documents in this scheme.</div>');
+}
+
+// The review queue: private uploads awaiting approval. Action buttons (approve /
+// reject) are admin-only — the same capability the API enforces.
+async function loadKBPending(isAdmin){
+  const box=document.getElementById("kbPendingBox");
+  if(!isAdmin){ box.hidden=true; return; }   // only reviewers see the actionable queue
+  try{
+    const pend=await api("/admin/knowledge-base/pending");
+    document.getElementById("kbPendingCount").textContent=pend.length;
+    box.hidden=pend.length===0;
+    // Group the queue under the contributing department.
+    const groups={};
+    pend.forEach(d=>{ const k=d.department||"Unassigned"; (groups[k]=groups[k]||[]).push(d); });
+    const row=d=>`<div class="qitem" style="cursor:default" data-preview="${escapeAttr(d.title||"")}">
+        ${sourcePill(d.source)}
+        <span class="q-sub">${escapeHtml(d.title||"(untitled)")} ${projectPill(d.project)}</span>
+        <span class="q-meta">${d.content_chars.toLocaleString()} chars${d.uploaded_by?` · by ${escapeHtml(d.uploaded_by)}`:""}</span>
+        <button class="green small" onclick="reviewKBDoc(${d.id},'approve')">Approve</button>
+        <button class="secondary small" onclick="reviewKBDoc(${d.id},'reject')">Reject</button>
+      </div>`;
+    document.getElementById("kbPending").innerHTML=Object.keys(groups).sort().map(dept=>
+      `<div class="note" style="margin:6px 0 4px;font-weight:700;color:#9a3412">${escapeHtml(dept)}</div>`
+      + groups[dept].map(row).join("")).join("");
+  }catch(e){ box.hidden=true; }
+}
+
+async function reviewKBDoc(id, decision){
+  try{
+    const d=await api(`/admin/knowledge-base/docs/${id}/${decision}`,"POST",{});
+    toast(decision==="approve"
+      ? `Approved “${d.title}”${d.chunks?` (${d.chunks} chunks indexed)`:""} — now searchable.`
+      : `Rejected “${d.title}” — kept out of the corpus.`);
+    loadKB(); loadDashboard();
   }catch(e){ toast(e.message); }
 }
 async function loadKBFreshness(){
@@ -671,12 +829,13 @@ async function addKBDoc(){
   const title=document.getElementById("kb_title").value.trim();
   const content=document.getElementById("kb_content").value.trim();
   const url=document.getElementById("kb_url").value.trim()||null;
+  const project=document.getElementById("kb_project").value.trim();
   if(!content){ toast("Enter some content to add."); return; }
   const btn=document.getElementById("kbAddBtn"); btn.disabled=true;
   try{
-    const d=await api("/admin/knowledge-base/docs","POST",{title,content,url});
-    ["kb_title","kb_content","kb_url"].forEach(id=>document.getElementById(id).value="");
-    toast(`Added “${d.title}”${d.chunks?` (${d.chunks} chunks indexed)`:""}.`);
+    const d=await api("/admin/knowledge-base/docs","POST",{title,content,url,project});
+    ["kb_title","kb_content","kb_url","kb_project"].forEach(id=>document.getElementById(id).value="");
+    toast(`Submitted “${d.title}” for review — it won't ground a draft until approved.`);
     loadKB(); loadDashboard();
   }catch(e){ toast(e.message); }
   finally{ btn.disabled=false; }
@@ -693,11 +852,12 @@ async function uploadKBDoc(){
   if(!inp.files||!inp.files.length){ toast("Choose a file to upload."); return; }
   const fd=new FormData(); fd.append("file", inp.files[0]);
   const title=document.getElementById("kb_title").value.trim(); if(title) fd.append("title", title);
+  const project=document.getElementById("kb_project").value.trim(); if(project) fd.append("project", project);
   const btn=document.getElementById("kbUploadBtn"); btn.disabled=true; btn.textContent="Uploading…";
   try{
     const d=await apiUpload("/admin/knowledge-base/upload", fd);
-    inp.value=""; document.getElementById("kb_title").value="";
-    toast(`Uploaded “${d.title}” (${d.content_chars.toLocaleString()} chars${d.chunks?`, ${d.chunks} chunks indexed`:""}).`);
+    inp.value=""; document.getElementById("kb_title").value=""; document.getElementById("kb_project").value="";
+    toast(`Uploaded “${d.title}” (${d.content_chars.toLocaleString()} chars) — submitted for review.`);
     loadKB(); loadDashboard();
   }catch(e){ toast(e.message); }
   finally{ btn.disabled=false; btn.textContent="Upload"; }
@@ -754,6 +914,7 @@ function matchesFilter(it){
   if(f.kind==="due")        return !closed && !it.paused && (it.sla_flag==="amber"||it.sla_flag==="red");
   if(f.kind==="regime")     return it.regime===f.value;
   if(f.kind==="department") return it.owning_department===f.value;
+  if(f.kind==="project")    return (it.project||"")===f.value;
   if(f.kind==="outcome")    return closed && it.outcome===f.value;
   return true;
 }
@@ -886,9 +1047,10 @@ function renderQueue(){
     const sla = it.stage==="closed" ? '<span class="flag green">CLOSED</span>'
       : (it.paused ? '<span class="flag amber">PAUSED</span>' : (it.sla_flag?flagBadge(it.sla_flag):""));
     const wd = (it.stage!=="closed" && it.working_days_remaining!=null) ? `${it.working_days_remaining} wd` : "";
+    const scheme = it.project ? `<span class="pill" style="background:#e0f2fe;border-color:#bae6fd;color:#075985">${escapeHtml(projLabel(it.project))}</span>` : "";
     div.innerHTML=`<span class="q-ref">${it.reference}</span>${sla}
       <span class="q-sub">${escapeHtml(it.subject||"(no subject)")}</span>
-      <span class="q-meta">${escapeHtml(it.owning_department||"—")}</span>
+      <span class="q-meta">${escapeHtml(it.owning_department||"—")}</span>${scheme}
       <span class="pill">${label}</span>
       <span class="q-meta">${wd}</span>`;
     div.onclick=()=>openCase(it.id);
@@ -1036,6 +1198,7 @@ function render(sla){
           <div class="k">Requester</div><div>${c.requester_name} (${c.requester_type})</div>
           <div class="k">Regime</div><div>${c.regime}</div>
           <div class="k">Department</div><div>${c.owning_department||"unassigned"}</div>
+          <div class="k">Scheme</div><div>${c.project?escapeHtml(projLabel(c.project)):"—"}</div>
           <div class="k">Holding</div><div>${c.holding_status}</div>
           <div class="k">Confidence</div><div>${(c.confidence*100).toFixed(0)}%</div>
           <div class="k">Deadline</div><div>${c.deadline?c.deadline.slice(0,10):"—"} ${sla?flagBadge(sla.flag):""} ${sla&&sla.paused?'<span class="pill paused">clock paused</span>':""}</div>
@@ -1128,6 +1291,35 @@ document.getElementById("clock").textContent=new Date().toLocaleDateString('en-G
 document.getElementById("li_pass").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDetail(); });
 setupPreview();
+makeCollapsible();
+
+// --- Collapsible panels: click a panel header to hide/show its contents ------
+function makeCollapsible(){
+  let collapsed;
+  try{ collapsed=new Set(JSON.parse(localStorage.getItem("foiCollapsed")||"[]")); }
+  catch(e){ collapsed=new Set(); }
+  const save=()=>{ try{ localStorage.setItem("foiCollapsed", JSON.stringify([...collapsed])); }catch(e){} };
+  document.querySelectorAll(".panel").forEach((panel,idx)=>{
+    if(panel.dataset.collapsibleInit) return;
+    const head=panel.querySelector(":scope > .cardhead") || panel.querySelector(":scope > h2.dash-h");
+    if(!head) return;                       // panel without a header row — skip
+    panel.dataset.collapsibleInit="1";
+    const key=panel.id || ("panel"+idx);
+    const title=head.matches("h2") ? head : (head.querySelector("h2.dash-h")||head);
+    const caret=document.createElement("span");
+    caret.className="caret"; caret.textContent="▾";
+    title.insertBefore(caret, title.firstChild);
+    head.classList.add("panel-head-click");
+    head.title="Click to hide / show";
+    if(collapsed.has(key)) panel.classList.add("collapsed");
+    head.addEventListener("click",e=>{
+      if(e.target.closest("button,a,input,select,.qfilter")) return;  // don't toggle on controls
+      const isC=panel.classList.toggle("collapsed");
+      if(isC) collapsed.add(key); else collapsed.delete(key);
+      save();
+    });
+  });
+}
 
 // Bootstrap: if there's a valid session, start the app; otherwise show login.
 (async function init(){

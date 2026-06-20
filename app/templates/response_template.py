@@ -1,9 +1,10 @@
 """House-style response template.
 
 Implements the block structure documented in the companion "FOI Response
-Template & House-Style Guide", derived from Hertfordshire County Council's
-published FOI guidance. The drafting service assembles these blocks; blocks
-that do not apply are omitted rather than left empty.
+Template & House-Style Guide", following standard UK local-authority FOI
+practice. Council-specific facts (name, address, team) come from config, so the
+template is not tied to any one authority. The drafting service assembles these
+blocks; blocks that do not apply are omitted rather than left empty.
 """
 from __future__ import annotations
 
