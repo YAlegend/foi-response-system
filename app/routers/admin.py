@@ -14,8 +14,8 @@ from ..database import get_db
 from ..enums import Role
 from ..ingestion import (documents, knowledge_base, published_responses,
                          website_crawler, whatdotheyknow)
-from ..models import (KnowledgeChunk, KnowledgeDoc, KnowledgeRefresh,
-                      SchemeNotification, User)
+from ..models import (DepartmentDigest, KnowledgeChunk, KnowledgeDoc,
+                      KnowledgeRefresh, SchemeNotification, User)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 settings = get_settings()
@@ -354,3 +354,33 @@ def notifications_run(db: Session = Depends(get_db), user: User = Depends(requir
     job is disabled). Sends only on schemes that have newly started deteriorating."""
     from ..services import notifications
     return notifications.check_and_notify(db, force=True)
+
+
+# --- Per-department SLA digest -------------------------------------------------
+
+@router.get("/digests")
+def digests_history(db: Session = Depends(get_db), user: User = Depends(require(Cap.READ))):
+    """Recent per-department SLA digests. With the stub provider each row's
+    `detail` is the digest body that would have been emailed."""
+    rows = db.execute(select(DepartmentDigest)
+                      .order_by(DepartmentDigest.created_at.desc(), DepartmentDigest.id.desc())
+                      .limit(50)).scalars().all()
+    return {
+        "provider": settings.notify_provider,
+        "enabled": settings.digest_enabled,
+        "events": [{
+            "department": r.department, "period": r.period, "open": r.open_cases,
+            "overdue": r.overdue, "breach_rate": r.breach_rate, "channel": r.channel,
+            "recipients": r.recipients, "subject": r.subject, "detail": r.detail,
+            "created_at": r.created_at,
+        } for r in rows],
+    }
+
+
+@router.post("/digests/run")
+def digests_run(force: bool = False, db: Session = Depends(get_db),
+                user: User = Depends(require(Cap.ADMIN))):
+    """Send the per-department SLA digests now (forced). Without ``force`` a
+    department already sent this ISO week is skipped."""
+    from ..services import digests
+    return digests.send_department_digests(db, force=True)

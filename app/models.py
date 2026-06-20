@@ -255,3 +255,22 @@ class SchemeNotification(Base):
     subject: Mapped[str] = mapped_column(String(300), default="")
     detail: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+
+class DepartmentDigest(Base):
+    """A per-department SLA digest send. The (department, period) pair is the
+    dedup key — a department gets one digest per ISO week unless a run is forced.
+    Created by create_all() on existing databases without a migration."""
+    __tablename__ = "department_digests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    department: Mapped[str] = mapped_column(String(120), index=True)
+    period: Mapped[str] = mapped_column(String(12), index=True)   # ISO year-week, e.g. 2026-W25
+    open_cases: Mapped[int] = mapped_column(Integer, default=0)
+    overdue: Mapped[int] = mapped_column(Integer, default=0)
+    breach_rate: Mapped[int] = mapped_column(Integer, default=0)
+    channel: Mapped[str] = mapped_column(String(16), default="stub")
+    recipients: Mapped[str] = mapped_column(String(500), default="")
+    subject: Mapped[str] = mapped_column(String(300), default="")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)

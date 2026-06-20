@@ -56,6 +56,18 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_use_tls: bool = True
 
+    # --- Per-department SLA digest (default OFF) ---
+    # A periodic summary emailed to each owning department: open / overdue /
+    # due-soon counts, breach rate, on-time %, and any deteriorating schemes among
+    # their cases. Periodic (once per ISO week per department), not event-driven —
+    # run from cron via `python -m app.digest`. Uses the same provider/SMTP as the
+    # alerts above. Recipients are routed per department; departments with no
+    # mapping fall back to FOI_NOTIFY_RECIPIENTS (the central IG list).
+    digest_enabled: bool = False
+    # "Department=email" pairs, comma-separated, e.g.
+    #   "Highways=highways@oxfordshire.gov.uk, Environment=env@oxfordshire.gov.uk"
+    digest_recipients: str = ""
+
     # --- AI provider (pluggable) ---
     # "stub"    -> deterministic template drafting, no external calls (default)
     # "ollama"  -> local on-prem model; nothing leaves the council network

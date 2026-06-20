@@ -125,6 +125,16 @@ until it recovers and deteriorates anew — so it's safe to run from cron
 (`python -m app.notify`, hourly). Trigger on demand with the panel's *Run check
 now* button or `POST /admin/notifications/run`.
 
+**Per-department SLA digest.** A *periodic* roll-up (distinct from the
+event-driven alert): one email per **owning department** summarising open /
+overdue / due-soon, breach rate, on-time %, the oldest overdue cases, and any
+deteriorating schemes among their cases. Recipients route per department via
+`FOI_DIGEST_RECIPIENTS` ("Dept=email, …") with `FOI_NOTIFY_RECIPIENTS` as the
+central fallback. Sent **once per ISO week per department** (deduped; a forced
+run re-sends). Run weekly from cron (`python -m app.digest`) or on demand from
+the admin **Department SLA digests** panel / `POST /admin/digests/run`. Uses the
+same provider — stub records each digest body without sending.
+
 A **"Scheme SLA performance"** table sits under the charts: per scheme it shows
 cases, open, **overdue** (open and past the statutory deadline), closed,
 **breach rate** (closed-late + currently-overdue ÷ total), **on-time %** (of
