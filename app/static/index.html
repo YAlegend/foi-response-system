@@ -292,6 +292,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> Cases</button>
     <button class="navitem nav-read" onclick="navTo(this,'analytics')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> Analytics</button>
+    <button class="navitem nav-contribute" onclick="navTo(this,'uploadPanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg> Upload</button>
     <button class="navitem nav-contribute" onclick="navTo(this,'kbPanel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M4 16h15"/></svg> Knowledge base</button>
     <button class="navitem nav-admin" onclick="navTo(this,'usersPanel')">
@@ -362,10 +364,31 @@
     </div>
     <div id="schemeSLA" style="margin-top:18px"></div>
   </div>
+  <!-- Upload: submit a document/facts for review (separate from the KB library) -->
+  <div class="panel" id="uploadPanel" hidden>
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Upload a document <span class="rolechip" id="upRoleChip" style="background:#0f3d57">contributor</span></h2></div>
+    <div class="note" style="margin:0 0 10px">Submit a document or facts for the knowledge base. Private uploads are <strong>submitted for review</strong> — they aren’t used in any draft until a reviewer approves them (see the review queue under <strong>Knowledge base</strong>). Tag it to a project/scheme to scope it.</div>
+    <div class="grid2">
+      <div><label>Title</label><input id="kb_title" placeholder="e.g. Traffic filter exemptions 2026" /></div>
+      <div><label>Source URL (optional)</label><input id="kb_url" placeholder="https://… (for the citation)" /></div>
+    </div>
+    <label>Project / scheme (optional)</label>
+    <input id="kb_project" placeholder="e.g. traffic-filters, zez — scopes the document to one scheme" />
+    <label>Information / content</label>
+    <textarea id="kb_content" placeholder="Paste the facts the drafter should be able to quote and cite…"></textarea>
+    <div class="btnrow" style="gap:10px;align-items:center;flex-wrap:wrap">
+      <button id="kbAddBtn" onclick="addKBDoc()">Submit text for review</button>
+      <span class="note">or upload a file:</span>
+      <input type="file" id="kb_file" accept=".pdf,.docx,.txt,.md,.html,.htm" />
+      <button class="secondary" id="kbUploadBtn" onclick="uploadKBDoc()">Upload file</button>
+    </div>
+    <div class="note" style="margin:6px 0 0">Accepts PDF, Word (.docx), text and HTML. Scanned/image-only PDFs aren’t supported (no OCR).</div>
+  </div>
+
   <div class="panel" id="kbPanel" hidden>
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" id="kbRoleChip" style="background:#0f3d57">contributor</span></h2>
       <span class="note" id="kbStats"></span></div>
-    <div class="note" style="margin:0 0 8px">Add facts or upload documents the auto-drafter can ground on and cite. Private uploads are <strong>submitted for review</strong> and are not used in any draft until a reviewer approves them. Tag a document to a project/scheme to scope it.</div>
+    <div class="note" style="margin:0 0 8px">The reviewed corpus the auto-drafter grounds on and cites. Add new material from <strong>Upload</strong>; approve pending submissions in the review queue below.</div>
     <div class="cardhead" id="kbRefreshBox" hidden style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
       <div><strong>Public information</strong> <span class="note" id="kbFreshness">checking…</span></div>
       <button class="secondary small" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
@@ -380,21 +403,6 @@
       </div>
       <div class="maillist" id="kbPending" style="max-height:30vh"></div>
     </div>
-    <div class="grid2">
-      <div><label>Title</label><input id="kb_title" placeholder="e.g. Traffic filter exemptions 2026" /></div>
-      <div><label>Source URL (optional)</label><input id="kb_url" placeholder="https://… (for the citation)" /></div>
-    </div>
-    <label>Project / scheme (optional)</label>
-    <input id="kb_project" placeholder="e.g. traffic-filters, zez — scopes the document to one scheme" />
-    <label>Information / content</label>
-    <textarea id="kb_content" placeholder="Paste the facts the drafter should be able to quote and cite…"></textarea>
-    <div class="btnrow" style="gap:10px;align-items:center;flex-wrap:wrap">
-      <button id="kbAddBtn" onclick="addKBDoc()">Add to knowledge base</button>
-      <span class="note">or upload a document:</span>
-      <input type="file" id="kb_file" accept=".pdf,.docx,.txt,.md,.html,.htm" />
-      <button class="secondary" id="kbUploadBtn" onclick="uploadKBDoc()">Upload</button>
-    </div>
-    <div class="note" style="margin:6px 0 0">Accepts PDF, Word (.docx), text and HTML. Scanned/image-only PDFs aren’t supported (no OCR).</div>
     <div class="maillist" id="kbList" style="max-height:34vh;margin-top:12px"></div>
   </div>
 
@@ -921,8 +929,10 @@ let kbProjectFilter=null;    // null = all; "" = untagged; otherwise a scheme ke
 
 async function loadKB(){
   const panel=document.getElementById("kbPanel");
-  if(!can("contribute")){ panel.hidden=true; return; }   // department + admin
+  const up=document.getElementById("uploadPanel");
+  if(!can("contribute")){ panel.hidden=true; if(up) up.hidden=true; return; }   // department + admin
   panel.hidden=false;
+  if(up){ up.hidden=false; const uc=document.getElementById("upRoleChip"); if(uc) uc.textContent=me?me.role:"contributor"; }
   const isAdmin=can("admin");
   document.getElementById("kbRoleChip").textContent=me?me.role:"contributor";
   // style.display, not [hidden]: the .cardhead class sets display and would
