@@ -57,6 +57,14 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    # Healthy while the app can serve (DB ok); /healthz returns 503 only on a DB
+    # failure, so a model still pulling doesn't mark the container unhealthy.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   caddy:
     image: caddy:2

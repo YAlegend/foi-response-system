@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import get_settings
 from .database import SessionLocal, init_db
 from .enums import STAGE_LABELS
-from .routers import admin, analytics, auth, dashboard, inbox, requests
+from .routers import admin, analytics, auth, dashboard, health, inbox, requests
 
 settings = get_settings()
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
@@ -43,6 +43,7 @@ app.include_router(inbox.router)
 app.include_router(dashboard.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
+app.include_router(health.router)
 
 # Serve the caseworker web UI at the root. The API docs remain at /docs.
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
