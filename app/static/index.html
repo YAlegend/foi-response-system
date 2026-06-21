@@ -674,33 +674,48 @@ const FC_ELABELS=[
 
 function flowchartSVG(){
   const counts=dashData.stage_counts||{};
-  // Grow each box around its existing centre (PAD) so the arrows/labels stay
-  // aligned, but the stages read much bigger and bolder.
-  const PADX=18, PADY=22;
-  const nodes=FC_NODES.map(nd=>{
-    const n=counts[nd.key]||0, cx=nd.x+FC_W/2, lbl=STAGE_LABEL[nd.key]||nd.label;
+  const main=FC_NODES.filter(n=>!n.off), off=FC_NODES.filter(n=>n.off);
+  // Order the off-pipeline stages by where they occur in the lifecycle.
+  const OFF_ORDER=["awaiting_clarification","4_department_review","5_update_response","internal_review"];
+  off.sort((a,b)=>OFF_ORDER.indexOf(a.key)-OFF_ORDER.indexOf(b.key));
+  const W=1180, BH=88, mainY=8, offY=160;
+
+  // One stage card. cx = horizontal centre; by = box top; bw = box width.
+  const box=(nd,cx,by,bw)=>{
+    const n=counts[nd.key]||0, lbl=STAGE_LABEL[nd.key]||nd.label;
     const col=STAGE_COLOR[nd.key]||"#64748b", active=fActive("stage",nd.key);
-    const cls="fc-node"+(nd.off?" off":"");
-    const bx=nd.x-PADX, by=nd.y-PADY, bw=FC_W+2*PADX, bh=FC_H+2*PADY, cy=nd.y+FC_H/2;
-    const ring=active?`<rect x="${bx-3}" y="${by-3}" width="${bw+6}" height="${bh+6}" rx="12" fill="none" stroke="#1d6fb8" stroke-width="3"/>`:"";
-    // Light tint of the stage colour so each stage reads as a coloured card;
-    // a stronger tint when active. Empty stages stay faint.
-    const fill = n===0 ? "#ffffff" : (active ? col+"2e" : col+"18");
-    const rectStyle=`fill:${fill};stroke:${col};stroke-width:2.6${n===0?';opacity:.5':''}`;
-    return `<g class="${cls}" onclick="setFilter('stage','${nd.key}','${lbl}')">
+    const bx=cx-bw/2, cy=by+BH/2;
+    const ring=active?`<rect x="${bx-3}" y="${by-3}" width="${bw+6}" height="${BH+6}" rx="14" fill="none" stroke="#1d6fb8" stroke-width="3"/>`:"";
+    // Light tint of the stage colour (stronger when active); empty stages stay faint.
+    const fill=n===0?"#ffffff":(active?col+"2e":col+"18");
+    const st=`fill:${fill};stroke:${col};stroke-width:2.6${n===0?';opacity:.5':''}`;
+    return `<g class="fc-node${nd.off?' off':''}" onclick="setFilter('stage','${nd.key}','${lbl}')">
       <title>${lbl}: ${n} case${n===1?"":"s"} — click to filter</title>
-      ${ring}<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="11" style="${rectStyle}"/>
+      ${ring}<rect x="${bx}" y="${by}" width="${bw}" height="${BH}" rx="13" style="${st}"/>
       <rect x="${bx}" y="${by}" width="${bw}" height="9" rx="4.5" fill="${col}"${n===0?' opacity="0.5"':''}/>
-      <text class="fc-label" x="${cx}" y="${cy-9}" text-anchor="middle">${nd.label}</text>
-      <text class="fc-count" x="${cx}" y="${cy+22}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
-  }).join("");
-  const fwd=FC_EDGES.map(d=>`<path class="fc-edge" d="${d}" marker-end="url(#fcArrow)"/>`).join("");
-  const loops=FC_LOOPS.map(e=>`<path class="fc-edge loop" d="${e.d}" marker-end="url(#fcArrow)" ${e.both?'marker-start="url(#fcArrow)"':''}/>`).join("");
-  const labels=FC_ELABELS.map(l=>`<text class="fc-elabel" x="${l.x}" y="${l.y}" text-anchor="${l.anchor||'middle'}">${l.t}</text>`).join("");
-  return `<svg viewBox="-10 -8 1146 292" role="img" aria-label="FOI process flowchart">
+      <text class="fc-label" x="${cx}" y="${cy-9}" text-anchor="middle">${lbl}</text>
+      <text class="fc-count" x="${cx}" y="${cy+23}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
+  };
+
+  // Main pipeline row — evenly spaced, with forward arrows between stages.
+  const slotM=W/main.length, mBW=slotM-18, cyM=mainY+BH/2;
+  const mainBoxes=main.map((nd,i)=>box(nd, slotM*i+slotM/2, mainY, mBW)).join("");
+  let arrows="";
+  for(let i=0;i<main.length-1;i++){
+    const r=slotM*i+slotM/2+mBW/2, l=slotM*(i+1)+slotM/2-mBW/2;
+    arrows+=`<path class="fc-edge" d="M${r},${cyM} L${l},${cyM}" marker-end="url(#fcArrow)"/>`;
+  }
+  // Off-pipeline row — its own labelled band; fewer boxes, so they're wider.
+  const slotO=W/off.length, oBW=slotO-40;
+  const offBoxes=off.map((nd,i)=>box(nd, slotO*i+slotO/2, offY, oBW)).join("");
+  const divY=mainY+BH+26;
+  const band=`<line x1="0" y1="${divY}" x2="${W}" y2="${divY}" stroke="#e6ecf3" stroke-width="1.5"/>
+    <text x="0" y="${divY+19}" class="fc-elabel" text-anchor="start" style="font-size:11.5px;fill:#94a3b8;letter-spacing:.4px">OFF-PIPELINE &amp; REVIEW LOOPS — cases branch here (clarification, department review, internal review) and rejoin</text>`;
+  const H=offY+BH+8;
+  return `<svg viewBox="-6 -6 ${W+12} ${H+12}" role="img" aria-label="FOI process pipeline">
     <defs><marker id="fcArrow" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto">
       <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
-    ${fwd}${loops}${labels}${nodes}</svg>`;
+    ${arrows}${band}${mainBoxes}${offBoxes}</svg>`;
 }
 
 async function loadDashboard(){
@@ -754,7 +769,7 @@ function renderDashboard(){
       <div class="m-num">${n}</div><div class="m-label">${label}</div></div>`).join("");
 
   document.getElementById("pipeline").innerHTML=`<div class="fc-wrap">${flowchartSVG()}</div>`;
-  document.getElementById("offpipe").innerHTML=`<div class="fc-legend">→ progress &nbsp;·&nbsp; ⇠ dashed = clarification &amp; review loops &nbsp;·&nbsp; click any stage to see its cases</div>`;
+  document.getElementById("offpipe").innerHTML=`<div class="fc-legend">→ pipeline progress &nbsp;·&nbsp; dashed = off-pipeline stages &nbsp;·&nbsp; click any stage to see its cases</div>`;
 
   renderDeadlines("dl_overdue","ov_n",dashData.deadlines.overdue,dashData.deadlines.overdue_total);
   renderDeadlines("dl_due","due_n",dashData.deadlines.due_soon,dashData.deadlines.due_soon_total);
