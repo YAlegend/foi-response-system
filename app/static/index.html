@@ -135,8 +135,8 @@
   .fc-node.active rect{stroke:var(--blue);stroke-width:2.5;fill:#f0f7ff}
   .fc-node.zero rect{stroke:#e8edf3}
   .fc-node.off rect{stroke-dasharray:4 3}
-  .fc-label{font:700 12.5px "Segoe UI",system-ui,sans-serif;fill:var(--grey)}
-  .fc-count{font:800 22px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
+  .fc-label{font:700 14px "Segoe UI",system-ui,sans-serif;fill:var(--grey)}
+  .fc-count{font:800 26px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
   .fc-node.zero .fc-count{fill:#cbd5e1}
   .fc-node.active .fc-count{fill:var(--blue)}
   .fc-edge{fill:none;stroke:#94a3b8;stroke-width:1.6}
@@ -676,7 +676,7 @@ function flowchartSVG(){
   const counts=dashData.stage_counts||{};
   // Grow each box around its existing centre (PAD) so the arrows/labels stay
   // aligned, but the stages read much bigger and bolder.
-  const PADX=16, PADY=12;
+  const PADX=18, PADY=22;
   const nodes=FC_NODES.map(nd=>{
     const n=counts[nd.key]||0, cx=nd.x+FC_W/2, lbl=STAGE_LABEL[nd.key]||nd.label;
     const col=STAGE_COLOR[nd.key]||"#64748b", active=fActive("stage",nd.key);
@@ -690,14 +690,14 @@ function flowchartSVG(){
     return `<g class="${cls}" onclick="setFilter('stage','${nd.key}','${lbl}')">
       <title>${lbl}: ${n} case${n===1?"":"s"} — click to filter</title>
       ${ring}<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="11" style="${rectStyle}"/>
-      <rect x="${bx}" y="${by}" width="${bw}" height="8" rx="4" fill="${col}"${n===0?' opacity="0.5"':''}/>
-      <text class="fc-label" x="${cx}" y="${cy-6}" text-anchor="middle">${nd.label}</text>
-      <text class="fc-count" x="${cx}" y="${cy+20}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
+      <rect x="${bx}" y="${by}" width="${bw}" height="9" rx="4.5" fill="${col}"${n===0?' opacity="0.5"':''}/>
+      <text class="fc-label" x="${cx}" y="${cy-9}" text-anchor="middle">${nd.label}</text>
+      <text class="fc-count" x="${cx}" y="${cy+22}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
   }).join("");
   const fwd=FC_EDGES.map(d=>`<path class="fc-edge" d="${d}" marker-end="url(#fcArrow)"/>`).join("");
   const loops=FC_LOOPS.map(e=>`<path class="fc-edge loop" d="${e.d}" marker-end="url(#fcArrow)" ${e.both?'marker-start="url(#fcArrow)"':''}/>`).join("");
   const labels=FC_ELABELS.map(l=>`<text class="fc-elabel" x="${l.x}" y="${l.y}" text-anchor="${l.anchor||'middle'}">${l.t}</text>`).join("");
-  return `<svg viewBox="-8 -6 1128 274" role="img" aria-label="FOI process flowchart">
+  return `<svg viewBox="-10 -8 1146 292" role="img" aria-label="FOI process flowchart">
     <defs><marker id="fcArrow" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto">
       <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
     ${fwd}${loops}${labels}${nodes}</svg>`;
