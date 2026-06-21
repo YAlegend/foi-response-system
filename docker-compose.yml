@@ -1,0 +1,82 @@
+# FOI response system — full on-prem stack (app + local LLM + HTTPS reverse proxy).
+#
+# Designed for a GCP VM with an NVIDIA L4 GPU and the NVIDIA Container Toolkit
+# installed (see docs/deploy-gcp-gpu.md). The LLM runs locally in `ollama`; no
+# case data leaves the box.
+#
+#   docker compose up -d --build
+#   docker compose run --rm api python -m app.seed      # demo data (optional)
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    # GPU access (needs the NVIDIA Container Toolkit on the host).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: pull the drafting model into the ollama volume, then exit. The app
+  # falls back to template drafting until this completes, so it never blocks boot.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${FOI_LLM_MODEL:-qwen2.5:7b-instruct}"]
+    restart: "no"
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      # Wire the app to the local model + persistent SQLite volume. These override
+      # anything in .env.production so the in-container wiring is always correct.
+      FOI_LLM_PROVIDER: ollama
+      FOI_OLLAMA_BASE_URL: http://ollama:11434
+      FOI_DATABASE_URL: sqlite:////app/data/foi.db
+      FOI_EMBEDDING_OFFLINE: "true"
+    volumes:
+      - foi_data:/app/data
+    depends_on:
+      ollama:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      # A domain -> automatic HTTPS via Let's Encrypt. Default ":80" -> HTTP only
+      # (fine for an IP-address demo). Set SITE_ADDRESS in .env.production.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  ollama_models:
+  foi_data:
+  caddy_data:
+  caddy_config:

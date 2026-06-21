@@ -4,6 +4,9 @@ __pycache__/
 venv/
 *.db
 .env
+# Real env files (may hold SMTP creds); keep the *.example templates tracked.
+.env.production
+.env.local
 .pytest_cache/
 .DS_Store
 # Local DB backups (e.g. foi.db.bak made before re-seeding)

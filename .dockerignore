@@ -1,0 +1,18 @@
+.venv/
+venv/
+.git/
+.gitignore
+*.db
+*.bak
+.env
+.env.*
+!.env.production.example
+__pycache__/
+*.pyc
+.pytest_cache/
+pytest-cache-files-*/
+.DS_Store
+tests/
+docs/
+models/          # the embedding model is re-vendored inside the image at build
+.claude/
