@@ -135,8 +135,8 @@
   .fc-node.active rect{stroke:var(--blue);stroke-width:2.5;fill:#f0f7ff}
   .fc-node.zero rect{stroke:#e8edf3}
   .fc-node.off rect{stroke-dasharray:4 3}
-  .fc-label{font:700 14px "Segoe UI",system-ui,sans-serif;fill:var(--grey)}
-  .fc-count{font:800 26px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
+  .fc-label{font:700 15px "Segoe UI",system-ui,sans-serif;fill:var(--grey)}
+  .fc-count{font:800 30px "Segoe UI",system-ui,sans-serif;fill:var(--navy)}
   .fc-node.zero .fc-count{fill:#cbd5e1}
   .fc-node.active .fc-count{fill:var(--blue)}
   .fc-edge{fill:none;stroke:#94a3b8;stroke-width:1.6}
@@ -678,7 +678,7 @@ function flowchartSVG(){
   // Order the off-pipeline stages by where they occur in the lifecycle.
   const OFF_ORDER=["awaiting_clarification","4_department_review","5_update_response","internal_review"];
   off.sort((a,b)=>OFF_ORDER.indexOf(a.key)-OFF_ORDER.indexOf(b.key));
-  const W=1180, BH=88, mainY=8, offY=160;
+  const W=1180, BH=116, mainY=8, offY=192;
 
   // One stage card. cx = horizontal centre; by = box top; bw = box width.
   const box=(nd,cx,by,bw)=>{
@@ -692,13 +692,13 @@ function flowchartSVG(){
     return `<g class="fc-node${nd.off?' off':''}" onclick="setFilter('stage','${nd.key}','${lbl}')">
       <title>${lbl}: ${n} case${n===1?"":"s"} — click to filter</title>
       ${ring}<rect x="${bx}" y="${by}" width="${bw}" height="${BH}" rx="13" style="${st}"/>
-      <rect x="${bx}" y="${by}" width="${bw}" height="9" rx="4.5" fill="${col}"${n===0?' opacity="0.5"':''}/>
-      <text class="fc-label" x="${cx}" y="${cy-9}" text-anchor="middle">${lbl}</text>
-      <text class="fc-count" x="${cx}" y="${cy+23}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
+      <rect x="${bx}" y="${by}" width="${bw}" height="10" rx="5" fill="${col}"${n===0?' opacity="0.5"':''}/>
+      <text class="fc-label" x="${cx}" y="${cy-12}" text-anchor="middle">${lbl}</text>
+      <text class="fc-count" x="${cx}" y="${cy+26}" text-anchor="middle" style="fill:${n===0?'#cbd5e1':col}">${n}</text></g>`;
   };
 
   // Main pipeline row — evenly spaced, with forward arrows between stages.
-  const slotM=W/main.length, mBW=slotM-18, cyM=mainY+BH/2;
+  const slotM=W/main.length, mBW=slotM-12, cyM=mainY+BH/2;
   const mainBoxes=main.map((nd,i)=>box(nd, slotM*i+slotM/2, mainY, mBW)).join("");
   let arrows="";
   for(let i=0;i<main.length-1;i++){
@@ -706,7 +706,7 @@ function flowchartSVG(){
     arrows+=`<path class="fc-edge" d="M${r},${cyM} L${l},${cyM}" marker-end="url(#fcArrow)"/>`;
   }
   // Off-pipeline row — its own labelled band; fewer boxes, so they're wider.
-  const slotO=W/off.length, oBW=slotO-40;
+  const slotO=W/off.length, oBW=slotO-28;
   const offBoxes=off.map((nd,i)=>box(nd, slotO*i+slotO/2, offY, oBW)).join("");
   const divY=mainY+BH+26;
   const band=`<line x1="0" y1="${divY}" x2="${W}" y2="${divY}" stroke="#e6ecf3" stroke-width="1.5"/>
