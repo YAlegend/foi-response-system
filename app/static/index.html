@@ -281,6 +281,23 @@
   /* One section per row (stack the side-by-side panels full width) */
   .dl-wrap{grid-template-columns:1fr}
   .lists{grid-template-columns:1fr}
+  /* ---- Interactivity ---- */
+  /* Process stages: clear lift + shadow + thicker outline on hover */
+  .fc-node{cursor:pointer;transition:transform .14s ease, filter .14s ease}
+  .fc-node:hover{transform:translateY(-4px);filter:drop-shadow(0 8px 14px rgba(15,61,87,.22))}
+  .fc-node:hover rect{stroke-width:3.4}
+  .fc-node:active{transform:translateY(-1px)}
+  .fc-edge{transition:stroke .15s ease}
+  /* Cards, tiles, rows: pop on hover */
+  .metric,.kpi,.dl-item,.qitem,.msg{transition:transform .12s ease,box-shadow .12s ease}
+  .metric:hover,.kpi:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(16,33,53,.12)}
+  .dl-item:hover,.qitem:hover{transform:translateX(2px)}
+  .panel{transition:box-shadow .15s ease}
+  .panel:hover{box-shadow:0 2px 4px rgba(16,33,53,.06),0 16px 40px rgba(16,33,53,.09)}
+  button{transition:transform .08s ease,filter .12s ease,background .12s ease}
+  button:hover{filter:brightness(1.06)}
+  button:active{transform:translateY(1px)}
+  .navitem{transition:background .12s ease,color .12s ease}
 </style>
 </head>
 <body>
@@ -666,7 +683,10 @@ function flowchartSVG(){
     const cls="fc-node"+(nd.off?" off":"");
     const bx=nd.x-PADX, by=nd.y-PADY, bw=FC_W+2*PADX, bh=FC_H+2*PADY, cy=nd.y+FC_H/2;
     const ring=active?`<rect x="${bx-3}" y="${by-3}" width="${bw+6}" height="${bh+6}" rx="12" fill="none" stroke="#1d6fb8" stroke-width="3"/>`:"";
-    const rectStyle=`fill:${active?'#eef6ff':'#fff'};stroke:${col};stroke-width:2.6${n===0?';opacity:.5':''}`;
+    // Light tint of the stage colour so each stage reads as a coloured card;
+    // a stronger tint when active. Empty stages stay faint.
+    const fill = n===0 ? "#ffffff" : (active ? col+"2e" : col+"18");
+    const rectStyle=`fill:${fill};stroke:${col};stroke-width:2.6${n===0?';opacity:.5':''}`;
     return `<g class="${cls}" onclick="setFilter('stage','${nd.key}','${lbl}')">
       <title>${lbl}: ${n} case${n===1?"":"s"} — click to filter</title>
       ${ring}<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="11" style="${rectStyle}"/>
