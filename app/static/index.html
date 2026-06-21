@@ -1724,30 +1724,25 @@ makeCollapsible();
 
 // --- Collapsible panels: click a panel header to hide/show its contents ------
 function makeCollapsible(){
-  let collapsed;
-  try{ collapsed=new Set(JSON.parse(localStorage.getItem("foiCollapsed")||"[]")); }
-  catch(e){ collapsed=new Set(); }
-  const save=()=>{ try{ localStorage.setItem("foiCollapsed", JSON.stringify([...collapsed])); }catch(e){} };
   document.querySelectorAll(".panel").forEach((panel,idx)=>{
     if(panel.dataset.collapsibleInit) return;
     const head=panel.querySelector(":scope > .cardhead") || panel.querySelector(":scope > h2.dash-h");
     if(!head) return;                       // panel without a header row — skip
     panel.dataset.collapsibleInit="1";
-    const key=panel.id || ("panel"+idx);
     const title=head.matches("h2") ? head : (head.querySelector("h2.dash-h")||head);
     const caret=document.createElement("span");
     caret.className="caret"; caret.textContent="▾";
     title.insertBefore(caret, title.firstChild);
     head.classList.add("panel-head-click");
     head.title="Click to hide / show";
-    if(collapsed.has(key)) panel.classList.add("collapsed");
+    // Panels always start expanded; collapsing is a per-session convenience only.
     head.addEventListener("click",e=>{
       if(e.target.closest("button,a,input,select,.qfilter")) return;  // don't toggle on controls
-      const isC=panel.classList.toggle("collapsed");
-      if(isC) collapsed.add(key); else collapsed.delete(key);
-      save();
+      panel.classList.toggle("collapsed");
     });
   });
+  // Drop any previously persisted collapsed state so panels open expanded.
+  try{ localStorage.removeItem("foiCollapsed"); }catch(e){}
 }
 
 // Bootstrap: if there's a valid session, start the app; otherwise show login.
