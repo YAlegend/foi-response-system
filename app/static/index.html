@@ -362,8 +362,19 @@
   .rr-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
   .rr-ref{font-weight:700;white-space:nowrap;color:var(--brand)}
   .rr-sub{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--grey)}
-  @media(min-width:1280px){ body.has-rrail header, body.has-rrail .dash, body.has-rrail .lists{margin-right:300px} }
-  @media(max-width:1279px){ .rrail{display:none} }
+  @media(min-width:1280px){ body.has-rrail:not(.rrail-off) header, body.has-rrail:not(.rrail-off) .dash, body.has-rrail:not(.rrail-off) .lists{margin-right:300px} }
+  @media(max-width:1279px){ .rrail,.rr-open{display:none} }
+  body.rrail-off .rrail{display:none}
+  /* Collapse / re-open controls for the right rail */
+  .rr-close{position:absolute;top:12px;right:14px;width:26px;height:26px;border:1px solid var(--line);
+    background:#fff;border-radius:8px;color:var(--grey);cursor:pointer;font-size:13px;line-height:1}
+  .rr-close:hover{border-color:var(--blue);color:var(--brand)}
+  .rr-open{position:fixed;top:78px;right:0;z-index:56;border:1px solid var(--line);border-right:0;
+    background:#fff;border-radius:10px 0 0 10px;padding:9px 9px 9px 12px;cursor:pointer;color:var(--brand);
+    box-shadow:var(--shadow);font-size:13px;font-weight:700}
+  .rr-open:hover{background:#f3f7fd}
+  /* Refit the process flowchart so it fills the gap when both rails are open */
+  @media(min-width:1280px){ body.has-rrail:not(.rrail-off) .fc-wrap svg{min-width:0} }
 </style>
 </head>
 <body>
@@ -433,10 +444,6 @@
     <div class="pipeline" id="pipeline"></div>
     <div class="offpipe" id="offpipe"></div>
   </div>
-  <div class="dl-wrap">
-    <div class="panel"><h2 class="dash-h">⚠ Overdue / breached <span id="ov_n"></span></h2><div id="dl_overdue"></div></div>
-    <div class="panel"><h2 class="dash-h">⏰ Due soon <span id="due_n"></span></h2><div id="dl_due"></div></div>
-  </div>
   <div class="panel" id="analytics">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Analytics</h2>
       <button class="ghost small" onclick="refreshDashboard()">↻ Refresh</button></div>
@@ -452,6 +459,10 @@
       <div><h3 class="ch-h">Requests received (last 8 weeks)</h3><div id="ch_intake"></div></div>
     </div>
     <div id="schemeSLA" style="margin-top:18px"></div>
+  </div>
+  <div class="dl-wrap">
+    <div class="panel"><h2 class="dash-h">⚠ Overdue / breached <span id="ov_n"></span></h2><div id="dl_overdue"></div></div>
+    <div class="panel"><h2 class="dash-h">⏰ Due soon <span id="due_n"></span></h2><div id="dl_due"></div></div>
   </div>
   <!-- Upload: submit a document/facts for review (separate from the KB library) -->
   <div class="panel" id="uploadPanel" hidden>
@@ -578,9 +589,11 @@
 
 <!-- Right activity rail -->
 <aside class="rrail" id="rrail" hidden>
+  <button class="rr-close" onclick="toggleRail()" title="Hide panel" aria-label="Hide panel">⟩</button>
   <div class="rr-sec"><h3>Needs attention</h3><div id="rrAttention"></div></div>
   <div class="rr-sec"><h3>Recent cases</h3><div id="rrRecent"></div></div>
 </aside>
+<button id="rrOpen" class="rr-open" onclick="toggleRail()" hidden title="Show panel">⟨ Panel</button>
 
 <!-- Slide-in case detail drawer -->
 <div id="backdrop" hidden onclick="closeDetail()"></div>
@@ -607,6 +620,19 @@ function navTo(el, id){
   if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// Right rail: user can hide it to give the dashboard the full width. The choice
+// is remembered, and a slim "Panel" tab re-opens it.
+function toggleRail(){
+  const off=document.body.classList.toggle("rrail-off");
+  try{ localStorage.setItem("foiRailOff", off?"1":"0"); }catch(e){}
+  syncRailToggle();
+}
+function syncRailToggle(){
+  const open=document.getElementById("rrOpen");
+  if(open) open.hidden=!(document.body.classList.contains("has-rrail")
+                         && document.body.classList.contains("rrail-off"));
+}
+
 const STAGES = [
   ["1_intake","Intake"],["2_triage","Triage"],["3_retrieval_draft","Draft"],
   ["4_department_review","Dept review"],["5_update_response","Update"],
@@ -629,7 +655,7 @@ async function api(path, method="GET", body){
 function showLogin(){ me=null; document.getElementById("overlay").style.display="flex";
   document.getElementById("userbox").hidden=true; document.getElementById("dash").hidden=true;
   document.getElementById("sidebar").hidden=true;
-  document.getElementById("rrail").hidden=true; document.body.classList.remove("has-rrail"); }
+  document.getElementById("rrail").hidden=true; document.body.classList.remove("has-rrail"); syncRailToggle(); }
 function hideLogin(){ document.getElementById("overlay").style.display="none"; }
 
 async function login(){
@@ -1434,8 +1460,10 @@ function renderQueue(){
 function renderRightRail(){
   const rail=document.getElementById("rrail");
   if(!rail) return;
-  if(!can("read")){ rail.hidden=true; document.body.classList.remove("has-rrail"); return; }
+  if(!can("read")){ rail.hidden=true; document.body.classList.remove("has-rrail"); syncRailToggle(); return; }
   rail.hidden=false; document.body.classList.add("has-rrail");
+  try{ document.body.classList.toggle("rrail-off", localStorage.getItem("foiRailOff")==="1"); }catch(e){}
+  syncRailToggle();
   const att=document.getElementById("rrAttention");
   if(att && dashData){
     const s=dashData.sla||{}, ov=(dashData.deadlines&&dashData.deadlines.overdue_total)||0;
