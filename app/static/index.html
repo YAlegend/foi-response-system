@@ -219,9 +219,88 @@
   .caret{display:inline-block;width:1em;margin-right:2px;color:#94a3b8;font-size:.8em;
     transition:transform .15s ease}
   .panel.collapsed .caret{transform:rotate(-90deg)}
+
+  /* ============ Council-appropriate dashboard restyle ============ */
+  :root{
+    --bg:#eef2f6; --card:#ffffff; --ink:#0f1b2a; --grey:#5b6b7f; --line:#e6ecf3;
+    --brand:#0f3d57; --brand2:#17557a; --accent:#1d6fb8; --teal:#0e9aa7;
+    --radius:14px; --shadow:0 1px 2px rgba(16,33,53,.05),0 10px 30px rgba(16,33,53,.06);
+    --sidebar-w:226px;
+  }
+  body{background:var(--bg)}
+  /* Sidebar nav */
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);z-index:60;
+    background:linear-gradient(180deg,#103e58,#0b2c40);display:flex;flex-direction:column}
+  .sidebar .brand{display:flex;align-items:center;gap:11px;padding:18px 16px 14px}
+  .sidebar .brand .mark{width:40px;height:40px;border-radius:11px;flex:0 0 auto;color:#fff;
+    background:linear-gradient(135deg,#1d6fb8,#0e9aa7);display:flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:15px;letter-spacing:.5px}
+  .sidebar .brand .bt{font-size:13px;font-weight:800;color:#fff;line-height:1.25}
+  .sidebar .brand .bs{font-size:10.5px;color:#9bc0d8;margin-top:1px}
+  .sidebar nav{display:flex;flex-direction:column;gap:3px;padding:8px 10px;flex:1;overflow:auto}
+  .navitem{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;width:100%;
+    border:0;background:transparent;color:#bdd5e6;font:inherit;font-size:13px;font-weight:600;
+    cursor:pointer;text-align:left}
+  .navitem svg{width:17px;height:17px;flex:0 0 auto;opacity:.92}
+  .navitem:hover{background:rgba(255,255,255,.08);color:#fff}
+  .navitem.active{background:linear-gradient(90deg,rgba(29,111,184,.45),rgba(14,154,167,.22));
+    color:#fff;box-shadow:inset 3px 0 0 #36b0c2}
+  .sidebar .side-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.10);
+    font-size:11px;color:#9bc0d8}
+  body:not(.cap-read) .nav-read{display:none}
+  body:not(.cap-contribute) .nav-contribute{display:none}
+  body:not(.cap-admin) .nav-admin{display:none}
+  /* Shift main content right of the fixed sidebar */
+  header,.dash,.lists{margin-left:var(--sidebar-w)}
+  @media(max-width:900px){.sidebar{display:none}header,.dash,.lists{margin-left:0}}
+  /* Slim, light top bar */
+  header{background:#fff;color:var(--ink);border-bottom:1px solid var(--line);padding:13px 24px}
+  header h1{color:var(--brand);font-size:16px}
+  header .sub{color:var(--grey)}
+  header .userbox{color:var(--grey)} header .userbox b{color:var(--ink)}
+  header .rolechip{background:#eaf1f8;color:var(--accent);border:1px solid #d6e6f5}
+  header button{background:#eef2f6;color:var(--ink)}
+  /* Softer, rounder cards/panels */
+  .card,.panel,.metric,.kpi{border-radius:var(--radius);box-shadow:var(--shadow);border-color:var(--line)}
+  .panel{padding:18px}
+  /* Metric tiles with a coloured accent rail */
+  .metric{background:#fff;position:relative;overflow:hidden;padding:15px 16px}
+  .metric .m-num{font-size:30px}
+  .metric::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  .metric.breach::before{background:#dc2626}
+  .metric.due::before{background:#d97706}
+  .metric.paused::before{background:#b45309}
+  .metric.closed::before{background:#15803d}
+  /* Buttons / pills */
+  button{border-radius:10px}
+  .pill,.bar-track,.bar-fill{border-radius:999px}
+  .dash{padding-top:16px}
 </style>
 </head>
 <body>
+<aside class="sidebar" id="sidebar" hidden>
+  <div class="brand">
+    <div class="mark">OX</div>
+    <div><div class="bt">Oxfordshire&nbsp;CC</div><div class="bs">FOI · Information Management</div></div>
+  </div>
+  <nav>
+    <button class="navitem nav-read active" onclick="navTo(this,'dash')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Dashboard</button>
+    <button class="navitem nav-read" onclick="navTo(this,'inboxPanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> FOI inbox</button>
+    <button class="navitem nav-read" onclick="navTo(this,'queuePanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> Cases</button>
+    <button class="navitem nav-read" onclick="navTo(this,'analytics')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> Analytics</button>
+    <button class="navitem nav-contribute" onclick="navTo(this,'kbPanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M4 16h15"/></svg> Knowledge base</button>
+    <button class="navitem nav-admin" onclick="navTo(this,'usersPanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg> Accounts</button>
+    <button class="navitem nav-admin" onclick="navTo(this,'notifyPanel')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Notifications</button>
+  </nav>
+  <div class="side-foot">Oxfordshire County Council<br>Information Management Team</div>
+</aside>
 <header>
   <div>
     <h1>Freedom of Information — Case Management</h1>
@@ -363,7 +442,7 @@
 
 <div class="lists">
   <!-- FOI inbox (email-style list) -->
-  <div class="panel">
+  <div class="panel" id="inboxPanel">
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">FOI inbox <span id="inboxCount" class="count" hidden>0</span></h2>
       <button class="ghost small" id="pollBtn" onclick="pollInbox()">Check inbox</button>
@@ -372,7 +451,7 @@
     <div class="maillist" id="inbox"><div class="empty">Loading…</div></div>
   </div>
   <!-- Case queue (email-style list) -->
-  <div class="panel">
+  <div class="panel" id="queuePanel">
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">Case queue <span id="queueCount" class="count" hidden>0</span>
         <span class="qfilter" id="queueFilter" hidden onclick="clearFilter()"></span></h2>
@@ -417,6 +496,14 @@ let current = null;
 let me = null;                       // the signed-in user {username, full_name, role, capabilities}
 const can = cap => !!me && me.capabilities.includes(cap);
 
+// Sidebar nav: highlight the item and scroll its section into view.
+function navTo(el, id){
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  const t=document.getElementById(id);
+  if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 const STAGES = [
   ["1_intake","Intake"],["2_triage","Triage"],["3_retrieval_draft","Draft"],
   ["4_department_review","Dept review"],["5_update_response","Update"],
@@ -437,7 +524,8 @@ async function api(path, method="GET", body){
 
 // --- Authentication ---------------------------------------------------------
 function showLogin(){ me=null; document.getElementById("overlay").style.display="flex";
-  document.getElementById("userbox").hidden=true; document.getElementById("dash").hidden=true; }
+  document.getElementById("userbox").hidden=true; document.getElementById("dash").hidden=true;
+  document.getElementById("sidebar").hidden=true; }
 function hideLogin(){ document.getElementById("overlay").style.display="none"; }
 
 async function login(){
@@ -468,6 +556,11 @@ function renderUser(){
 function startApp(){
   renderUser();
   document.getElementById("dash").hidden=false;
+  // Sidebar nav + capability classes that gate which nav items show.
+  document.getElementById("sidebar").hidden=false;
+  document.body.classList.toggle("cap-read", can("read"));
+  document.body.classList.toggle("cap-contribute", can("contribute"));
+  document.body.classList.toggle("cap-admin", can("admin"));
   // Department contributors have no case access (CONTRIBUTE only): show them the
   // knowledge-base panel alone, not the case dashboard / queue / requester data.
   const caseUser=can("read");
