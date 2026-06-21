@@ -128,6 +128,16 @@ def _project_for(url: str, project_seeds: list[tuple[str, str]]) -> str:
     return ""
 
 
+def _scheme_for(url: str, title: str, text: str,
+                project_seeds: list[tuple[str, str]]) -> str:
+    """Scheme tag for a crawled page. Prefer a configured seed-URL match; fall
+    back to catalogue-keyword detection over the title/URL/lead text so real
+    scheme pages are tagged even when their live URL doesn't match a seed prefix."""
+    from ..projects import detect_project
+    return (_project_for(url, project_seeds)
+            or detect_project(f"{title} {url.replace('-', ' ')} {text[:3000]}"))
+
+
 def _pdf_title(raw_text: str, url: str) -> str:
     """A readable title for a PDF: its first substantial line, else a tidied
     filename derived from the URL."""
@@ -217,9 +227,10 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
                 raw = _extract_pdf_text(resp.content)
                 text = " ".join(raw.split())
                 if len(text) >= min_chars:
+                    pdf_title = _pdf_title(raw, url)
                     knowledge_base.upsert(db, source="website",
-                                          title=_pdf_title(raw, url), content=text, url=url,
-                                          project=_project_for(url, project_seeds))
+                                          title=pdf_title, content=text, url=url,
+                                          project=_scheme_for(url, pdf_title, text, project_seeds))
                     ingested += 1
                 db.commit()
                 time.sleep(effective_delay)
@@ -236,7 +247,7 @@ def crawl(db: Session, root: str | None = None, max_pages: int | None = None,
             if len(text) >= min_chars:
                 knowledge_base.upsert(db, source="website", title=title,
                                      content=text, url=url,
-                                     project=_project_for(url, project_seeds))
+                                     project=_scheme_for(url, title, text, project_seeds))
                 ingested += 1
 
             for a in soup.find_all("a", href=True):
