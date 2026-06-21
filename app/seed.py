@@ -232,6 +232,21 @@ def _seed_pending_uploads(db) -> int:
     return n
 
 
+def _build_index(db) -> None:
+    """In semantic mode, build the embedding index so drafting can ground on the
+    seeded corpus. Best-effort: keyword mode skips it, and a missing embedding
+    stack degrades to ungrounded drafting rather than failing the seed."""
+    from .config import get_settings
+    if get_settings().retrieval_provider.lower() != "semantic":
+        return
+    try:
+        from .reindex import reindex as _reindex
+        res = _reindex(db)
+        print(f"Semantic index built: {res['chunks']} chunks across {res['docs']} docs.")
+    except Exception as exc:  # embedding stack missing / model unavailable
+        print(f"Semantic index skipped ({type(exc).__name__}: {exc}); drafts may be ungrounded.")
+
+
 def run() -> None:
     init_db()
     db = SessionLocal()
@@ -244,6 +259,11 @@ def run() -> None:
         n_pending = _seed_pending_uploads(db)
         print(f"Knowledge base seeded: {knowledge_base.count(db)} docs "
               f"({n_foi} published FOI precedents, {n_pending} pending review).")
+
+        # Build the semantic index now — BEFORE any case is drafted — so the
+        # worked case and demo cases ground on the corpus from the first run.
+        # (Keyword retrieval needs no index, so this is a no-op there.)
+        _build_index(db)
 
         # Populate the dedicated FOI mailbox so the inbox-driven intake has
         # something to triage in the UI from the first page load.
