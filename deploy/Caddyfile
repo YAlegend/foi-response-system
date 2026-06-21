@@ -1,0 +1,7 @@
+# Reverse proxy + automatic HTTPS.
+#   SITE_ADDRESS=foi.example.gov.uk  -> Let's Encrypt cert, HTTP->HTTPS redirect
+#   SITE_ADDRESS=:80                 -> plain HTTP (IP-only demo)
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy api:8000
+}

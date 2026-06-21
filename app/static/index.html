@@ -350,6 +350,15 @@
     <div class="btnrow"><button class="secondary small" id="notifyRunBtn" onclick="runNotifications()">Run check now</button></div>
     <div class="maillist" id="notifyList" style="max-height:34vh;margin-top:12px"></div>
   </div>
+
+  <!-- Admin: per-department SLA digest -->
+  <div class="panel" id="digestPanel" hidden style="margin-top:14px">
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Department SLA digests <span class="rolechip" style="background:#0f3d57">admin</span></h2>
+      <span class="note" id="digestStats"></span></div>
+    <div class="note" style="margin:0 0 8px">A weekly summary per owning department (open / overdue / due-soon, breach rate, deteriorating schemes). Runs from cron (<code>python -m app.digest</code>) or on demand here; recipients route per department (<code>FOI_DIGEST_RECIPIENTS</code>) with the central IG list as fallback. The stub provider records each digest below without sending.</div>
+    <div class="btnrow"><button class="secondary small" id="digestRunBtn" onclick="runDigests()">Send digests now</button></div>
+    <div class="maillist" id="digestList" style="max-height:34vh;margin-top:12px"></div>
+  </div>
 </section>
 
 <div class="lists">
@@ -473,6 +482,7 @@ function startApp(){
   loadKB();      // contributors (department + admin)
   loadUsers();   // admin only (self-gates)
   loadNotifications();   // admin only (self-gates)
+  loadDigests();   // admin only (self-gates)
 }
 
 function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
@@ -743,7 +753,34 @@ function renderSchemeSLA(rows){
 
 function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
 function barClick(el){ setFilter(el.dataset.kind, el.dataset.val, el.dataset.label); }
-function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); loadNotifications(); }
+function refreshDashboard(){ loadDashboard(); loadAnalytics(); loadQueue(); loadKB(); loadUsers(); loadNotifications(); loadDigests(); }
+
+async function loadDigests(){
+  const panel=document.getElementById("digestPanel");
+  if(!can("admin")){ panel.hidden=true; return; }
+  panel.hidden=false;
+  try{
+    const r=await api("/admin/digests");
+    document.getElementById("digestStats").textContent=
+      `provider: ${r.provider} · ${r.enabled?"weekly job on":"weekly job off"}`;
+    const el=document.getElementById("digestList");
+    el.innerHTML=r.events.length? r.events.map(e=>`<div class="qitem" style="cursor:default"${e.detail?` data-preview="${escapeAttr(e.detail)}"`:""}>
+        <span class="pill" style="background:#0f3d57;color:#fff;border:0">${escapeHtml(e.period)}</span>
+        <span class="q-sub">${escapeHtml(e.department)} · ${e.open} open · ${e.overdue} overdue · ${e.breach_rate}%</span>
+        <span class="q-meta">${e.channel}${e.recipients?` → ${escapeHtml(e.recipients)}`:""} · ${new Date(e.created_at).toLocaleString('en-GB')}</span>
+      </div>`).join("")
+      : '<div class="empty">No digests yet — click “Send digests now”.</div>';
+  }catch(e){ /* non-admins ignore */ }
+}
+async function runDigests(){
+  const btn=document.getElementById("digestRunBtn"); btn.disabled=true; btn.textContent="Sending…";
+  try{
+    const r=await api("/admin/digests/run","POST");
+    toast(`Digests (${r.status}) — sent ${r.sent.length} department${r.sent.length===1?"":"s"} for ${r.period}.`);
+    loadDigests();
+  }catch(e){ toast(e.message); }
+  finally{ btn.disabled=false; btn.textContent="Send digests now"; }
+}
 
 const NOTIFY_COLOR={alerted:"#b45309",resolved:"#15803d"};
 async function loadNotifications(){
