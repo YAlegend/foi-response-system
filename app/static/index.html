@@ -127,8 +127,8 @@
   .pnode.zero .pn-count{color:#cbd5e1}
   .pnode .pn-label{font-size:10px;color:var(--grey);text-transform:uppercase;letter-spacing:.3px;line-height:1.25;margin-top:4px}
   /* Flowchart */
-  .fc-wrap{overflow-x:auto}
-  .fc-wrap svg{min-width:760px;width:100%;height:auto;display:block}
+  .fc-wrap{flex:1 1 100%;width:100%;min-width:0;overflow-x:auto}
+  .fc-wrap svg{min-width:640px;width:100%;height:auto;display:block}
   .fc-node{cursor:pointer}
   .fc-node rect{fill:#fff;stroke:#cbd5e1;stroke-width:1.5;transition:stroke .1s}
   .fc-node:hover rect{stroke:var(--blue)}
@@ -777,7 +777,7 @@ function flowchartSVG(){
   // Order the off-pipeline stages by where they occur in the lifecycle.
   const OFF_ORDER=["awaiting_clarification","4_department_review","5_update_response","internal_review"];
   off.sort((a,b)=>OFF_ORDER.indexOf(a.key)-OFF_ORDER.indexOf(b.key));
-  const W=1180, BH=116, mainY=8, offY=192;
+  const W=1180, BH=134, mainY=8, offY=214;
 
   // One stage card. cx = horizontal centre; by = box top; bw = box width.
   const box=(nd,cx,by,bw)=>{
