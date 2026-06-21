@@ -96,10 +96,12 @@ docker compose logs -f ollama-pull   # watch the model download (~4.7 GB, a few 
 The app is up immediately; until the model finishes pulling, drafting falls back
 to template assembly, then automatically uses the local LLM once it's ready.
 
-Load the demo data (Oxfordshire corpus, worked cases, scheme SLA spread):
+Load the demo data (Oxfordshire corpus, worked cases, scheme SLA spread), then
+build the embedding index (the env runs semantic retrieval):
 
 ```bash
 docker compose run --rm api python -m app.seed
+docker compose run --rm api python -m app.reindex   # needed for FOI_RETRIEVAL_PROVIDER=semantic
 ```
 
 Open `https://<your-domain>` (or `http://<VM-IP>`), sign in as **admin / admin**.
@@ -107,6 +109,15 @@ Open `https://<your-domain>` (or `http://<VM-IP>`), sign in as **admin / admin**
 ---
 
 ## 5. Verify the local LLM is actually drafting
+
+Quickest check — the health probe reports DB, retrieval, and **LLM** status:
+
+```bash
+curl -s http://localhost:8000/healthz | python3 -m json.tool
+# components.llm.status == "ok"        -> local model reachable + pulled
+#                       == "model_missing" -> ollama up, still pulling
+#                       == "unreachable"   -> ollama not reachable
+```
 
 ```bash
 # model present?
