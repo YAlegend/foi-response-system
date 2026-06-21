@@ -298,6 +298,33 @@
   button:hover{filter:brightness(1.06)}
   button:active{transform:translateY(1px)}
   .navitem{transition:background .12s ease,color .12s ease}
+
+  /* ============ SnowUI-flavoured pass: airy, soft pastel cards ============ */
+  :root{--bg:#f6f8fc; --radius:16px; --line:#eef1f6;
+    --shadow:0 1px 2px rgba(16,33,53,.04),0 12px 30px rgba(16,33,53,.05)}
+  body{background:var(--bg)}
+  .panel{border-radius:16px;padding:22px}
+  .card{border-radius:16px}
+  /* Metric tiles: soft full-tint cards, label on top, big number below */
+  .metric{display:flex;flex-direction:column-reverse;align-items:flex-start;
+    border-radius:16px;padding:18px 20px;border:1px solid var(--line);background:#eef4fe;min-height:96px;justify-content:center}
+  .metric::before{display:none}
+  .metric .m-num{font-size:34px;line-height:1;margin-top:6px}
+  .metric .m-label{font-size:11.5px;letter-spacing:.5px}
+  .metric.due,.metric.paused{background:#fff6e9;border-color:#fbe6c4}
+  .metric.due .m-num,.metric.paused .m-num{color:#b45309}
+  .metric.breach{background:#fdeded;border-color:#f6d2d2}
+  .metric.breach .m-num{color:#b91c1c}
+  .metric.closed{background:#edf7f1;border-color:#cdebd9}
+  .metric.closed .m-num{color:#15803d}
+  .metric.open{background:#eef4fe;border-color:#d8e6fb}
+  .metric.open .m-num{color:#1d4ed8}
+  /* Softer chart bar palette to match the kit */
+  .bar-track{background:#eef2f8}
+  /* Slightly lighter section headlines (still prominent) */
+  .dash-h, .card h2, .cardhead h2.dash-h{color:#1f2a3a;letter-spacing:.2px}
+  /* Tidy KPI tiles in analytics */
+  .kpi{border-radius:14px;background:#fafbfe}
 </style>
 </head>
 <body>
