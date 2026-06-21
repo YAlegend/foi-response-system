@@ -325,6 +325,45 @@
   .dash-h, .card h2, .cardhead h2.dash-h{color:#1f2a3a;letter-spacing:.2px}
   /* Tidy KPI tiles in analytics */
   .kpi{border-radius:14px;background:#fafbfe}
+
+  /* ---- Order-List style table (case queue) ---- */
+  .otable-wrap{overflow-x:auto}
+  .otable{width:100%;border-collapse:collapse;font-size:13px}
+  .otable th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+    color:var(--grey);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line)}
+  .otable td{padding:12px;border-bottom:1px solid var(--line);color:var(--ink);vertical-align:middle}
+  .otable tbody tr:last-child td{border-bottom:0}
+  .orow{cursor:pointer;transition:background .1s ease}
+  .orow:hover{background:#f3f7fd}
+  .orow.active{background:#e8f1fe;box-shadow:inset 3px 0 0 var(--accent)}
+  .oref{font-weight:700;white-space:nowrap;color:var(--brand)}
+  .osub{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .onowrap{white-space:nowrap;color:var(--grey)}
+  .sdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .pager{display:flex;gap:6px;justify-content:flex-end;align-items:center;margin-top:14px}
+  .pgn{min-width:30px;height:30px;border:1px solid var(--line);background:#fff;color:var(--ink);
+    border-radius:8px;font-size:13px;cursor:pointer;padding:0 8px;font-weight:600}
+  .pgn:hover{background:#f3f7fd}
+  .pgn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+
+  /* ---- Right activity rail ---- */
+  .rrail{position:fixed;top:0;right:0;bottom:0;width:300px;background:#fff;
+    border-left:1px solid var(--line);padding:18px 16px;overflow:auto;z-index:55}
+  .rr-sec{margin-bottom:24px}
+  .rr-sec h3{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);
+    margin:0 0 10px;font-weight:800}
+  .rr-stat{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;
+    font-size:13px;color:var(--ink);border-bottom:1px dashed var(--line)}
+  .rr-stat b{font-size:16px}
+  .rr-chip{display:inline-block;margin:6px 6px 0 0;font-size:11.5px;font-weight:700;color:#b45309;
+    background:#fff7e8;border:1px solid #fbe6c4;border-radius:999px;padding:3px 9px;cursor:pointer}
+  .rr-item{display:flex;align-items:center;gap:9px;padding:8px;border-radius:9px;cursor:pointer;font-size:12.5px}
+  .rr-item:hover{background:#f3f7fd}
+  .rr-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .rr-ref{font-weight:700;white-space:nowrap;color:var(--brand)}
+  .rr-sub{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--grey)}
+  @media(min-width:1280px){ body.has-rrail header, body.has-rrail .dash, body.has-rrail .lists{margin-right:300px} }
+  @media(max-width:1279px){ .rrail{display:none} }
 </style>
 </head>
 <body>
@@ -537,6 +576,12 @@
   </div>
 </div>
 
+<!-- Right activity rail -->
+<aside class="rrail" id="rrail" hidden>
+  <div class="rr-sec"><h3>Needs attention</h3><div id="rrAttention"></div></div>
+  <div class="rr-sec"><h3>Recent cases</h3><div id="rrRecent"></div></div>
+</aside>
+
 <!-- Slide-in case detail drawer -->
 <div id="backdrop" hidden onclick="closeDetail()"></div>
 <aside id="drawer" class="drawer">
@@ -583,7 +628,8 @@ async function api(path, method="GET", body){
 // --- Authentication ---------------------------------------------------------
 function showLogin(){ me=null; document.getElementById("overlay").style.display="flex";
   document.getElementById("userbox").hidden=true; document.getElementById("dash").hidden=true;
-  document.getElementById("sidebar").hidden=true; }
+  document.getElementById("sidebar").hidden=true;
+  document.getElementById("rrail").hidden=true; document.body.classList.remove("has-rrail"); }
 function hideLogin(){ document.getElementById("overlay").style.display="none"; }
 
 async function login(){
@@ -800,6 +846,7 @@ function renderDashboard(){
 
   renderDeadlines("dl_overdue","ov_n",dashData.deadlines.overdue,dashData.deadlines.overdue_total);
   renderDeadlines("dl_due","due_n",dashData.deadlines.due_soon,dashData.deadlines.due_soon_total);
+  renderRightRail();
 }
 
 function renderDeadlines(elId,countId,items,total){
@@ -1325,12 +1372,23 @@ async function loadQueue(){
   renderQueue();
 }
 
+// A single status for a case: coloured dot + label (drives the table + rail).
+function caseStatus(it){
+  if(it.stage==="closed") return {dot:"#15803d",label:"Closed"};
+  if(it.paused) return {dot:"#d97706",label:"Paused"};
+  if(it.sla_flag==="breach") return {dot:"#dc2626",label:"Overdue"};
+  if(it.sla_flag==="red"||it.sla_flag==="amber") return {dot:"#d97706",label:"Due soon"};
+  return {dot:"#15803d",label:"On track"};
+}
+let queuePage=1;
+const QUEUE_PAGE_SIZE=9;
+function queueGo(p){ queuePage=p; renderQueue(); }
+
 function renderQueue(){
   const search=(document.getElementById("queueSearch")?.value||"").toLowerCase().trim();
   const shown = queueItems.filter(matchesFilter).filter(it=>
     !search || `${it.reference} ${it.subject||""} ${it.requester_name||""}`.toLowerCase().includes(search));
 
-  // queue header count + active-filter indicator
   const badge=document.getElementById("queueCount");
   badge.textContent=shown.length; badge.hidden=false;
   const fil=document.getElementById("queueFilter");
@@ -1340,23 +1398,64 @@ function renderQueue(){
 
   const q=document.getElementById("queue");
   if(!shown.length){ q.innerHTML=`<div class="empty">${(activeFilter||search)?"No cases match.":"No cases yet."}</div>`; return; }
-  q.innerHTML="";
-  for(const it of shown){
-    const div=document.createElement("div");
-    div.className="qitem"+(current&&current.id===it.id?" active":"");
-    div.setAttribute("data-preview", it.body||"(no content)");
+
+  const pages=Math.ceil(shown.length/QUEUE_PAGE_SIZE);
+  if(queuePage>pages) queuePage=1;
+  const page=shown.slice((queuePage-1)*QUEUE_PAGE_SIZE, queuePage*QUEUE_PAGE_SIZE);
+  const rows=page.map(it=>{
     const label=STAGE_LABEL[it.stage] || STAGES[stageIndex(it.stage)]?.[1] || it.stage;
-    const sla = it.stage==="closed" ? '<span class="flag green">CLOSED</span>'
-      : (it.paused ? '<span class="flag amber">PAUSED</span>' : (it.sla_flag?flagBadge(it.sla_flag):""));
-    const wd = (it.stage!=="closed" && it.working_days_remaining!=null) ? `${it.working_days_remaining} wd` : "";
-    const scheme = it.project ? `<span class="pill" style="background:#e0f2fe;border-color:#bae6fd;color:#075985">${escapeHtml(projLabel(it.project))}</span>` : "";
-    div.innerHTML=`<span class="q-ref">${it.reference}</span>${sla}
-      <span class="q-sub">${escapeHtml(it.subject||"(no subject)")}</span>
-      <span class="q-meta">${escapeHtml(it.owning_department||"—")}</span>${scheme}
-      <span class="pill">${label}</span>
-      <span class="q-meta">${wd}</span>`;
-    div.onclick=()=>openCase(it.id);
-    q.appendChild(div);
+    const st=caseStatus(it);
+    const wd=(it.stage!=="closed" && it.working_days_remaining!=null) ? ` · ${it.working_days_remaining} wd` : "";
+    const dl=it.deadline?it.deadline.slice(0,10):"—";
+    const scheme=it.project ? `<span class="pill" style="background:#e0f2fe;border-color:#bae6fd;color:#075985">${escapeHtml(projLabel(it.project))}</span>` : "<span class='onowrap'>—</span>";
+    return `<tr class="orow${current&&current.id===it.id?' active':''}" data-preview="${escapeAttr(it.body||'(no content)')}" onclick="openCase(${it.id})">
+      <td class="oref">${it.reference}</td>
+      <td class="osub">${escapeHtml(it.subject||"(no subject)")}</td>
+      <td>${escapeHtml(it.owning_department||"—")}</td>
+      <td>${scheme}</td>
+      <td><span class="pill">${label}</span></td>
+      <td class="onowrap">${dl}${wd}</td>
+      <td class="onowrap"><span class="sdot" style="background:${st.dot}"></span>${st.label}</td>
+    </tr>`;
+  }).join("");
+  let pager="";
+  if(pages>1){
+    let nums="";
+    for(let p=1;p<=pages;p++) nums+=`<button class="pgn${p===queuePage?' on':''}" onclick="queueGo(${p})">${p}</button>`;
+    pager=`<div class="pager"><button class="pgn" onclick="queueGo(${Math.max(1,queuePage-1)})">‹</button>${nums}<button class="pgn" onclick="queueGo(${Math.min(pages,queuePage+1)})">›</button></div>`;
+  }
+  q.innerHTML=`<div class="otable-wrap"><table class="otable">
+    <thead><tr><th>Reference</th><th>Subject</th><th>Department</th><th>Scheme</th><th>Stage</th><th>Deadline</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>${pager}`;
+  renderRightRail();
+}
+
+// Right activity rail: attention summary + recent cases.
+function renderRightRail(){
+  const rail=document.getElementById("rrail");
+  if(!rail) return;
+  if(!can("read")){ rail.hidden=true; document.body.classList.remove("has-rrail"); return; }
+  rail.hidden=false; document.body.classList.add("has-rrail");
+  const att=document.getElementById("rrAttention");
+  if(att && dashData){
+    const s=dashData.sla||{}, ov=(dashData.deadlines&&dashData.deadlines.overdue_total)||0;
+    const det=(dashData.overdue_by_scheme||[]);
+    att.innerHTML=`
+      <div class="rr-stat"><span>Overdue</span><b style="color:#b91c1c">${ov}</b></div>
+      <div class="rr-stat"><span>Due soon</span><b style="color:#b45309">${(s.amber||0)+(s.red||0)}</b></div>
+      <div class="rr-stat"><span>Awaiting clarification</span><b>${s.paused||0}</b></div>
+      <div class="rr-stat" style="border:0"><span>Open total</span><b>${(dashData.totals&&dashData.totals.open)||0}</b></div>
+      ${det.length?`<div style="margin-top:8px">${det.map(d=>`<span class="rr-chip" onclick="setFilter('project','${d.key}','${escapeAttr(d.label)}')">${escapeHtml(d.label)} ${d.count}</span>`).join("")}</div>`:""}`;
+  }
+  const rec=document.getElementById("rrRecent");
+  if(rec){
+    const items=[...queueItems].sort((a,b)=>new Date(b.received_at)-new Date(a.received_at)).slice(0,7);
+    rec.innerHTML=items.length? items.map(it=>{
+      const st=caseStatus(it);
+      return `<div class="rr-item" onclick="openCase(${it.id})"><span class="rr-dot" style="background:${st.dot}"></span>
+        <span class="rr-ref">${escapeHtml((it.reference||"").replace("FOI/",""))}</span>
+        <span class="rr-sub">${escapeHtml(it.subject||"")}</span></div>`;
+    }).join("") : '<div class="empty" style="padding:8px;text-align:left">No cases yet.</div>';
   }
 }
 
