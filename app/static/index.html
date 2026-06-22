@@ -549,7 +549,7 @@
   <div class="panel" id="notifyPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Breach-trend notifications <span class="rolechip" style="background:#0f3d57">admin</span></h2>
       <span class="note" id="notifyStats"></span></div>
-    <div class="note" style="margin:0 0 8px">Emails a distribution list when a scheme starts deteriorating (breaches trending up). Runs from cron (<code>python -m app.notify</code>) or on demand here. With the stub provider nothing is sent — the message that <em>would</em> be emailed is recorded below.</div>
+    <div class="note" style="margin:0 0 8px">Automatically alerts the team by email when a scheme starts breaching its deadlines more often. Sent on a schedule, or run a check now. In this demo nothing is actually emailed — the message that <em>would</em> be sent is shown below.</div>
     <div class="btnrow demo-hide"><button class="secondary small" id="notifyRunBtn" onclick="runNotifications()">Run check now</button></div>
     <div class="maillist" id="notifyList" style="max-height:34vh;margin-top:12px"></div>
   </div>
@@ -558,7 +558,7 @@
   <div class="panel" id="digestPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Department SLA digests <span class="rolechip" style="background:#0f3d57">admin</span></h2>
       <span class="note" id="digestStats"></span></div>
-    <div class="note" style="margin:0 0 8px">A weekly summary per owning department (open / overdue / due-soon, breach rate, deteriorating schemes). Runs from cron (<code>python -m app.digest</code>) or on demand here; recipients route per department (<code>FOI_DIGEST_RECIPIENTS</code>) with the central IG list as fallback. The stub provider records each digest below without sending.</div>
+    <div class="note" style="margin:0 0 8px">A weekly summary for each department — their open, overdue and due-soon cases, breach rate and any deteriorating schemes — emailed automatically each week, or send now. Each department gets its own summary. In this demo nothing is sent — each digest is shown below.</div>
     <div class="btnrow demo-hide"><button class="secondary small" id="digestRunBtn" onclick="runDigests()">Send digests now</button></div>
     <div class="maillist" id="digestList" style="max-height:34vh;margin-top:12px"></div>
   </div>
@@ -1178,7 +1178,7 @@ async function loadDigests(){
   try{
     const r=await api("/admin/digests");
     document.getElementById("digestStats").textContent=
-      `provider: ${r.provider} · ${r.enabled?"weekly job on":"weekly job off"}`;
+      `${r.enabled?"Weekly send on":"Weekly send off"} · ${r.provider==="stub"?"demo (not sending)":"live email"}`;
     const el=document.getElementById("digestList");
     el.innerHTML=r.events.length? r.events.map(e=>`<div class="qitem" style="cursor:default"${e.detail?` data-preview="${escapeAttr(e.detail)}"`:""}>
         <span class="pill" style="background:#0f3d57;color:#fff;border:0">${escapeHtml(e.period)}</span>
@@ -1205,9 +1205,8 @@ async function loadNotifications(){
   panel.hidden=false;
   try{
     const r=await api("/admin/notifications");
-    const rcpt=r.recipients.length?r.recipients.join(", "):"(none set)";
     document.getElementById("notifyStats").textContent=
-      `provider: ${r.provider} · ${r.enabled?"scheduled job on":"scheduled job off"} · to: ${rcpt}`;
+      `${r.enabled?"Automatic alerts on":"Automatic alerts off"} · ${r.provider==="stub"?"demo (not sending)":"live email"}`;
     const el=document.getElementById("notifyList");
     el.innerHTML=r.events.length? r.events.map(e=>`<div class="qitem" style="cursor:default"${e.detail?` data-preview="${escapeAttr(e.detail)}"`:""}>
         <span class="pill" style="background:${NOTIFY_COLOR[e.event]||'#64748b'};color:#fff;border:0">${e.event}</span>
@@ -1536,7 +1535,7 @@ async function pollInbox(){
   btn.disabled=true; const prev=btn.textContent; btn.textContent="Checking…";
   try{
     const r=await api("/inbox/poll","POST");
-    document.getElementById("inboxAddr").textContent=`Monitoring ${r.address} · provider: ${r.provider}`;
+    document.getElementById("inboxAddr").textContent=`Monitoring ${r.address}`;
     toast(r.new>0?`${r.new} new message${r.new>1?"s":""} in the FOI inbox`:"No new messages.");
     await loadInbox();
   }catch(e){ toast(e.message); }
