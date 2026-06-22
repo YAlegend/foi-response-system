@@ -410,7 +410,7 @@
   </div>
   <div class="userbox" id="userbox" hidden>
     <span><b id="u_name"></b> <span class="rolechip" id="u_role"></span></span>
-    <button onclick="logout()">Sign out</button>
+    <button id="signOutBtn" onclick="logout()">Sign out</button>
   </div>
   <div class="sub" id="clock"></div>
 </header>
@@ -680,7 +680,9 @@ async function logout(){
 function renderUser(){
   document.getElementById("userbox").hidden=false;
   document.getElementById("u_name").textContent=me.full_name||me.username;
-  document.getElementById("u_role").textContent=me.role.replace("_"," ");
+  document.getElementById("u_role").textContent=me.demo ? "demo" : me.role.replace("_"," ");
+  // No-login demo: there's no session to end, so hide the Sign out button.
+  document.getElementById("signOutBtn").hidden=!!me.demo;
 }
 
 function startApp(){

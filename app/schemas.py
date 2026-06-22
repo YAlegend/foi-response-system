@@ -18,6 +18,7 @@ class UserOut(BaseModel):
     role: str
     department: str = ""
     capabilities: list[str] = []
+    demo: bool = False
 
 
 class UserCreateIn(BaseModel):

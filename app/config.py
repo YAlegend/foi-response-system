@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = False        # set true behind HTTPS in production
     seed_default_users: bool = True            # create starter accounts if none exist
 
+    # --- Demo mode (no login) ---
+    # When true, unauthenticated visitors are transparently treated as
+    # `demo_username` so the public demo opens straight on the dashboard with no
+    # sign-in. NEVER enable for a real deployment — it grants that user's role to
+    # anyone who can reach the URL. Off by default.
+    demo_mode: bool = False
+    demo_username: str = "admin"
+
     # --- Retrieval (pluggable) ---
     # "keyword"  -> offline token-overlap ranker, no dependencies (default)
     # "semantic" -> local embeddings + cosine search (offline, no data egress);
