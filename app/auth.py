@@ -140,6 +140,11 @@ def delete_session(db: Session, token: str | None) -> None:
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = session_user(db, request.cookies.get(settings.session_cookie_name))
+    if not user and settings.demo_mode:
+        # No-login demo: treat anonymous visitors as the configured demo user.
+        user = db.execute(
+            select(User).where(User.username == settings.demo_username)
+        ).scalar_one_or_none()
     if not user:
         raise HTTPException(401, "Not authenticated")
     return user

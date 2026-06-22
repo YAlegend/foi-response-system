@@ -49,6 +49,21 @@ def test_unauthenticated_is_rejected(client):
     assert client.get("/requests").status_code == 401
 
 
+def test_demo_mode_resolves_anonymous_to_demo_user(client, monkeypatch):
+    """With demo_mode on, requests without a session are treated as the demo user
+    so the public demo opens with no login."""
+    from app.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "demo_mode", True)
+    monkeypatch.setattr(s, "demo_username", "cw")
+    me = client.get("/auth/me")          # no cookie / never logged in
+    assert me.status_code == 200
+    body = me.json()
+    assert body["username"] == "cw" and body["demo"] is True
+    # A gated endpoint is now reachable anonymously (not a 401).
+    assert client.get("/requests").status_code != 401
+
+
 def test_bad_credentials(client):
     assert _login(client, "cw", "wrong").status_code == 401
 
