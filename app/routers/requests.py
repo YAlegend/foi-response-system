@@ -11,6 +11,7 @@ from ..config import get_settings
 from ..database import get_db
 from ..enums import Stage
 from ..models import FOIRequest, User
+from .. import people
 from ..services import casework, reminders
 from ..sla import sla_state
 from ..workflow import TransitionError
@@ -58,7 +59,13 @@ def list_requests(db: Session = Depends(get_db), user: User = Depends(require(Ca
 @router.get("/{request_id}", response_model=schemas.RequestDetail)
 def get_request(request_id: int, db: Session = Depends(get_db),
                 user: User = Depends(require(Cap.READ))):
-    return _get(db, request_id)
+    req = _get(db, request_id)
+    dept = reminders.responsible_for(req)
+    officer = people.officer_for(dept)
+    # Non-mapped attrs read by the response schema (from_attributes) — not stored.
+    req.responsible_person = officer["name"]
+    req.responsible_department = dept or "FOI team"
+    return req
 
 
 @router.get("/{request_id}/sla")

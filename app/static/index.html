@@ -721,6 +721,15 @@ function startApp(){
 
 function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
 
+// Human-readable audit-trail labels (hide the technical action keys).
+const ACTION_LABEL={
+  "reminder_sent":"Reminder sent","clarification:requested":"Clarification requested",
+  "clarification:received":"Clarification received","signoff:authorised":"Sign-off authorised",
+  "draft:created":"Draft created","compliance:checked":"Compliance checked",
+  "dispatch:sent":"Response dispatched","triage:classified":"Triaged"
+};
+function actionLabel(a){ return ACTION_LABEL[a]||String(a||"").replace(/[._:]+/g," ").replace(/\b\w/g,m=>m.toUpperCase()); }
+
 function toast(msg){
   const wrap=document.getElementById("toast");
   const el=document.createElement("div"); el.className="t"; el.textContent=msg;
@@ -914,13 +923,13 @@ function renderDeadlines(elId,countId,items,total){
   if(!items.length){ el.innerHTML='<div class="empty" style="padding:12px">None.</div>'; return; }
   const canRemind=can("process");
   el.innerHTML=items.map(c=>{
-    const owner=c.owner||"Unassigned";
-    const btn=canRemind?`<button class="dl-remind" title="Email a reminder to ${escapeAttr(owner)}"
+    const person=c.owner_person||"FOI team", team=c.owner||"FOI team";
+    const btn=canRemind?`<button class="dl-remind" title="Email a reminder to ${escapeAttr(person)}"
         onclick="event.stopPropagation();sendReminder(${c.id},this)">Remind</button>`:"";
     return `<div class="dl-item" onclick="openCase(${c.id})">
       <div class="dl-main"><div class="dl-ref">${c.reference} ${flagBadge(c.flag)}</div>
         <div class="dl-sub">${escapeHtml((c.subject||"").slice(0,40))} · ${STAGE_LABEL[c.stage]||c.stage}</div>
-        <div class="dl-owner">👤 Responsible: ${escapeHtml(owner)}</div></div>
+        <div class="dl-owner">👤 ${escapeHtml(person)} · ${escapeHtml(team)}</div></div>
       <div class="dl-meta">${c.deadline}<br>${c.working_days_remaining} wd left${btn?`<br>${btn}`:""}</div>
     </div>`;}).join("")
     + (total>items.length?`<div class="note">+${total-items.length} more…</div>`:"");
@@ -933,14 +942,32 @@ async function sendReminder(id, btn){
   btn.disabled=true; btn.textContent="Sending…";
   try{
     const r=await api(`/requests/${id}/remind`,"POST");
-    const who=r.department||"the team";
+    const who=`${r.person} (${r.department})`;
     toast(r.provider==="stub"
-      ? `Reminder for ${r.reference} recorded for ${who} (demo — no email sent)`
-      : (r.sent?`Reminder for ${r.reference} emailed to ${who}`
-               :`No recipients configured for ${who}`));
+      ? `Reminder for ${r.reference} recorded for ${who} — demo, no email sent`
+      : (r.sent?`Reminder for ${r.reference} sent to ${who}`
+               :`No mailbox configured for ${who}`));
     btn.textContent="Reminded ✓";
   }catch(e){ btn.textContent="Failed"; toast("Reminder failed: "+(e.message||e)); }
   finally{ setTimeout(()=>{ btn.disabled=false; btn.textContent=orig; }, 2600); }
+}
+
+// Send a reminder from the open case detail, then refresh it so the new audit
+// entry shows immediately.
+async function sendReminderDetail(id){
+  const btn=document.getElementById("remindDetailBtn");
+  if(btn){ btn.disabled=true; btn.textContent="Sending…"; }
+  try{
+    const r=await api(`/requests/${id}/remind`,"POST");
+    const who=`${r.person} (${r.department})`;
+    toast(r.provider==="stub"
+      ? `Reminder for ${r.reference} recorded for ${who} — demo, no email sent`
+      : (r.sent?`Reminder for ${r.reference} sent to ${who}`:`No mailbox configured for ${who}`));
+    if(current && current.id===id) openCase(id);   // refresh audit trail
+  }catch(e){
+    toast("Reminder failed: "+(e.message||e));
+    if(btn){ btn.disabled=false; btn.textContent="✉ Send reminder"; }
+  }
 }
 
 const OUTCOME_COLOR={granted_full:"#15803d",granted_partial:"#0d9488",not_held:"#64748b",refused:"#b91c1c",open:"#1d6fb8"};
@@ -1743,18 +1770,20 @@ function render(sla){
           <div class="k">Subject</div><div>${c.subject||"—"}</div>
           <div class="k">Requester</div><div>${c.requester_name} (${c.requester_type})</div>
           <div class="k">Regime</div><div>${c.regime}</div>
-          <div class="k">Department</div><div>${c.owning_department||"unassigned"}</div>
+          <div class="k">Responsible</div><div>${escapeHtml(c.responsible_person||"FOI team")} · ${escapeHtml(c.responsible_department||"FOI team")}</div>
           <div class="k">Scheme</div><div>${c.project?escapeHtml(projLabel(c.project)):"—"}</div>
           <div class="k">Holding</div><div>${c.holding_status}</div>
           <div class="k">Confidence</div><div>${(c.confidence*100).toFixed(0)}%</div>
           <div class="k">Deadline</div><div>${c.deadline?c.deadline.slice(0,10):"—"} ${sla?flagBadge(sla.flag):""} ${sla&&sla.paused?'<span class="pill paused">clock paused</span>':""}</div>
           ${sla?`<div class="k">Working days left</div><div>${sla.working_days_remaining}${sla.working_days_paused?` · paused ${sla.working_days_paused}`:""}</div>`:""}
         </div>
+        ${(can("process")&&c.stage!=="closed")?`<div class="btnrow" style="margin-top:10px">
+          <button class="secondary" id="remindDetailBtn" onclick="sendReminderDetail(${c.id})">✉ Send reminder to ${escapeHtml(c.responsible_person||"FOI team")}</button></div>`:""}
         <h2>Actions</h2>
         ${actionsFor(c)}
         <h2 style="margin-top:16px">Audit trail</h2>
         <ul class="timeline">${(c.events||[]).slice().reverse().map(e=>
-          `<li><b>${e.action}</b> — ${e.actor}<div class="when">${new Date(e.created_at).toLocaleString('en-GB')} · ${e.detail||""}</div></li>`
+          `<li><b>${actionLabel(e.action)}</b> — ${e.actor}<div class="when">${new Date(e.created_at).toLocaleString('en-GB')}${e.detail?` · ${escapeHtml(e.detail)}`:""}</div></li>`
         ).join("")||'<li class="when">No events yet.</li>'}</ul>
       </div>
       <div>
