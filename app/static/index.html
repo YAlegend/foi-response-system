@@ -180,6 +180,9 @@
   .mini-in{font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;
     background:#fff;color:var(--ink);min-width:150px}
   .mini-in:focus{outline:none;border-color:var(--blue)}
+  .acct-dept{font-size:12px;font-weight:800;color:var(--brand);margin:14px 0 6px;
+    display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:5px}
+  .acct-group:first-child .acct-dept{margin-top:2px}
   .ch-h{font-size:12px;color:var(--ink);margin:0 0 8px;font-weight:700}
   .bar-row{display:grid;grid-template-columns:120px 1fr 32px;gap:8px;align-items:center;margin-bottom:5px;border-radius:6px}
   .bar-row.click{cursor:pointer;padding:1px 4px;margin-left:-4px}
@@ -1391,11 +1394,26 @@ async function loadUsers(){
   panel.hidden=false;
   try{
     const users=await api("/admin/users");
-    document.getElementById("usersStats").textContent=`${users.length} accounts`;
-    document.getElementById("usersList").innerHTML=users.map(u=>`<div class="qitem" style="cursor:default">
+    const depts=new Set(users.map(u=>(u.department||"").trim()).filter(Boolean));
+    document.getElementById("usersStats").textContent=
+      `${users.length} account${users.length===1?"":"s"} · ${depts.size} department${depts.size===1?"":"s"}`;
+    // Group accounts by the department they belong to; central roles (no
+    // department) go last, so it's clear which account belongs where.
+    const groups={};
+    users.forEach(u=>{ const k=(u.department||"").trim()||"__central"; (groups[k]=groups[k]||[]).push(u); });
+    const order=Object.keys(groups).filter(k=>k!=="__central").sort((a,b)=>a.localeCompare(b));
+    if(groups["__central"]) order.push("__central");
+    const acct=u=>`<div class="qitem" style="cursor:default">
         <span class="pill" style="background:#0f3d57;color:#fff;border:0">${escapeHtml(u.role)}</span>
         <span class="q-sub">${escapeHtml(u.full_name||u.username)} <span class="note">(${escapeHtml(u.username)})</span></span>
-        <span class="q-meta">${u.department?escapeHtml(u.department):""}${u.is_active?"":" · inactive"}</span></div>`).join("");
+        <span class="q-meta">${u.is_active?"active":"inactive"}</span></div>`;
+    document.getElementById("usersList").innerHTML=order.map(k=>{
+      const central=k==="__central";
+      const title=central?"Central / no department":k;
+      return `<div class="acct-group">
+        <div class="acct-dept">${central?"🏛":"🏢"} ${escapeHtml(title)} <span class="count">${groups[k].length}</span></div>
+        ${groups[k].map(acct).join("")}</div>`;
+    }).join("");
   }catch(e){ /* ignore for non-admins */ }
 }
 async function addUser(){
@@ -1409,7 +1427,7 @@ async function addUser(){
   try{
     const u=await api("/admin/users","POST",{username,password,role,full_name,department});
     ["nu_username","nu_password","nu_fullname","nu_department"].forEach(id=>document.getElementById(id).value="");
-    toast(`Created account “${u.username}” (${u.role}).`);
+    toast(`Created account “${u.username}” — ${u.role}${u.department?` · ${u.department}`:" · central"}.`);
     loadUsers();
   }catch(e){ toast(e.message); }
   finally{ btn.disabled=false; }
