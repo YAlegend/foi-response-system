@@ -1459,7 +1459,13 @@ function setFilter(kind, value, label){
   if(activeFilter && activeFilter.kind===kind && activeFilter.value===value){ activeFilter=null; }
   else activeFilter={kind, value, label};
   renderDashboard(); renderAnalytics(); renderQueue();
-  document.getElementById("queue").scrollIntoView({behavior:"smooth",block:"nearest"});
+  // Clicking a process stage / card / chip should surface its cases: jump to the
+  // Cases view (where the queue lives) and scroll the filtered list into view.
+  if(activeFilter && can("read")){
+    showView("cases");
+    const q=document.getElementById("queuePanel");
+    if(q) q.scrollIntoView({behavior:"smooth", block:"start"});
+  }
 }
 function clearFilter(){ activeFilter=null; renderDashboard(); renderAnalytics(); renderQueue(); }
 
