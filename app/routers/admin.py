@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import auth, schemas
-from ..auth import Cap, require
+from ..auth import Cap, require, require_live
 from ..config import get_settings
 from ..database import get_db
 from ..enums import Role
@@ -132,7 +132,7 @@ def list_docs(db: Session = Depends(get_db), user: User = Depends(require(Cap.CO
 
 @router.post("/knowledge-base/docs", response_model=schemas.KnowledgeDocOut, status_code=201)
 def add_doc(payload: schemas.KnowledgeDocIn, db: Session = Depends(get_db),
-            user: User = Depends(require(Cap.CONTRIBUTE))):
+            user: User = Depends(require_live(Cap.CONTRIBUTE))):
     """Add a private knowledge document (pasted text). Lands in the review queue
     (pending_review); a reviewer must approve it before it can ground a draft."""
     return _doc_out(_store_doc(db, user, title=payload.title, content=payload.content,
@@ -147,7 +147,7 @@ _MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 async def upload_doc(file: UploadFile = File(...), title: str = Form(""),
                      project: str = Form(""),
                      db: Session = Depends(get_db),
-                     user: User = Depends(require(Cap.CONTRIBUTE))):
+                     user: User = Depends(require_live(Cap.CONTRIBUTE))):
     """Upload a document (PDF / Word / text / HTML) for internal material the
     department holds that is not published anywhere. Its extracted text becomes a
     knowledge document in the review queue (pending_review) — optionally scoped to
@@ -182,7 +182,7 @@ def list_pending(db: Session = Depends(get_db), user: User = Depends(require(Cap
 
 @router.post("/knowledge-base/docs/{doc_id}/approve", response_model=schemas.KnowledgeDocOut)
 def approve_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
-                db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+                db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Approve a pending upload: mark it reviewed, make it retrievable, and (in
     semantic mode) index it now so it is searchable immediately."""
     from datetime import datetime, timezone
@@ -208,7 +208,7 @@ def approve_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
 
 @router.post("/knowledge-base/docs/{doc_id}/reject", response_model=schemas.KnowledgeDocOut)
 def reject_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
-               db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+               db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Reject a pending upload: it stays on record (audit) but is never retrieved.
     Its chunks, if any, are cleared so it cannot ground a draft."""
     from datetime import datetime, timezone
@@ -226,7 +226,7 @@ def reject_doc(doc_id: int, payload: schemas.KnowledgeReviewIn | None = None,
 
 @router.delete("/knowledge-base/docs/{doc_id}")
 def delete_doc(doc_id: int, db: Session = Depends(get_db),
-               user: User = Depends(require(Cap.ADMIN))):
+               user: User = Depends(require_live(Cap.ADMIN))):
     doc = db.get(KnowledgeDoc, doc_id)
     if not doc:
         raise HTTPException(404, "Document not found")
@@ -244,7 +244,7 @@ def list_users(db: Session = Depends(get_db), user: User = Depends(require(Cap.A
 
 @router.post("/users", response_model=schemas.UserSummary, status_code=201)
 def create_user(payload: schemas.UserCreateIn, db: Session = Depends(get_db),
-                user: User = Depends(require(Cap.ADMIN))):
+                user: User = Depends(require_live(Cap.ADMIN))):
     """Create an account — e.g. a subject department that uploads documents."""
     valid_roles = {r.value for r in Role}
     if payload.role not in valid_roles:
@@ -276,7 +276,7 @@ def refresh_status(db: Session = Depends(get_db), user: User = Depends(require(C
 
 
 @router.post("/knowledge-base/refresh", response_model=schemas.KnowledgeRefreshOut)
-def refresh_now(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+def refresh_now(db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Refresh the public-information knowledge base now (re-crawl + re-ingest +
     reindex). Forced, so it runs even if the auto-refresh flag is off; individual
     sources still require their FOI_INGEST_* flags and stay best-effort."""
@@ -285,7 +285,7 @@ def refresh_now(db: Session = Depends(get_db), user: User = Depends(require(Cap.
 
 
 @router.post("/reindex")
-def reindex(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+def reindex(db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Build the semantic chunk index (needs FOI_RETRIEVAL_PROVIDER=semantic)."""
     from ..reindex import reindex as _reindex
     try:
@@ -296,7 +296,7 @@ def reindex(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMI
 
 @router.post("/ingest/website")
 def ingest_website(max_pages: int | None = None, db: Session = Depends(get_db),
-                   user: User = Depends(require(Cap.ADMIN))):
+                   user: User = Depends(require_live(Cap.ADMIN))):
     try:
         n = website_crawler.crawl(db, max_pages=max_pages)
     except RuntimeError as exc:
@@ -306,7 +306,7 @@ def ingest_website(max_pages: int | None = None, db: Session = Depends(get_db),
 
 @router.post("/ingest/published-responses")
 def ingest_published(feed_dir: str | None = None, db: Session = Depends(get_db),
-                     user: User = Depends(require(Cap.ADMIN))):
+                     user: User = Depends(require_live(Cap.ADMIN))):
     try:
         n = published_responses.ingest(db, feed_dir=feed_dir)
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
@@ -315,7 +315,7 @@ def ingest_published(feed_dir: str | None = None, db: Session = Depends(get_db),
 
 
 @router.post("/ingest/whatdotheyknow")
-def ingest_wdtk(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+def ingest_wdtk(db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Ingest already-published FOI Q&A from the WhatDoTheyKnow archive for the
     configured authority (FOI_WHATDOTHEYKNOW_AUTHORITY)."""
     try:
@@ -349,7 +349,7 @@ def notifications_history(db: Session = Depends(get_db), user: User = Depends(re
 
 
 @router.post("/notifications/run")
-def notifications_run(db: Session = Depends(get_db), user: User = Depends(require(Cap.ADMIN))):
+def notifications_run(db: Session = Depends(get_db), user: User = Depends(require_live(Cap.ADMIN))):
     """Run the breach-trend notification check now (forced, even if the scheduled
     job is disabled). Sends only on schemes that have newly started deteriorating."""
     from ..services import notifications
@@ -379,7 +379,7 @@ def digests_history(db: Session = Depends(get_db), user: User = Depends(require(
 
 @router.post("/digests/run")
 def digests_run(force: bool = False, db: Session = Depends(get_db),
-                user: User = Depends(require(Cap.ADMIN))):
+                user: User = Depends(require_live(Cap.ADMIN))):
     """Send the per-department SLA digests now (forced). Without ``force`` a
     department already sent this ISO week is skipped."""
     from ..services import digests

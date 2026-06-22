@@ -162,6 +162,22 @@ def require(*caps: str):
     return dependency
 
 
+def require_live(*caps: str):
+    """Like :func:`require`, but also refuses while the no-login public demo is
+    on (FOI_DEMO_MODE). Used to gate destructive / irreversible / outbound-email
+    actions so an anonymous demo visitor can browse and run the workflow, but
+    cannot manage accounts, dispatch responses, edit the knowledge base, run
+    crawls or send mail."""
+    cap_gate = require(*caps)
+
+    def dependency(user: User = Depends(cap_gate)) -> User:
+        if settings.demo_mode:
+            raise HTTPException(403, "This action is disabled in the public demo.")
+        return user
+
+    return dependency
+
+
 # --- Default starter accounts (dev only — change in production) ---------------
 
 # username, password, role, full name, department

@@ -34,6 +34,7 @@ def client():
     s = TestingSession()
     auth.create_user(s, username="cw", password="pw", role=Role.CASEWORKER.value)
     auth.create_user(s, username="mgr", password="pw", role=Role.MANAGER.value)
+    auth.create_user(s, username="adm", password="pw", role=Role.ADMIN.value)
     s.close()
 
     yield TestClient(fastapi_app)
@@ -109,3 +110,25 @@ def test_logout_clears_session(client):
     assert client.get("/auth/me").status_code == 200
     client.post("/auth/logout")
     assert client.get("/auth/me").status_code == 401
+
+
+def test_demo_mode_blocks_destructive_but_allows_workflow(client, monkeypatch):
+    """With the public demo on, an anonymous visitor (resolved to admin) can view
+    and run the workflow, but destructive/irreversible actions are refused."""
+    from app.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "demo_mode", True)
+    monkeypatch.setattr(s, "demo_username", "adm")     # demo visitor resolves to admin
+
+    # Viewing admin data is still allowed (read-only screens stay populated).
+    assert client.get("/admin/users").status_code == 200
+    # ...but creating an account is refused while the demo is on.
+    r = client.post("/admin/users", json={"username": "x", "password": "secret1",
+                                          "role": "caseworker", "full_name": "X", "department": ""})
+    assert r.status_code == 403 and "demo" in r.json()["detail"].lower()
+    # The workflow itself still runs (register a request — Cap.INTAKE, not demo-gated).
+    reg = client.post("/requests", json={"requester_name": "A", "requester_email": "a@example.com",
+                                         "subject": "S", "body": "1. A question?"})
+    assert reg.status_code == 201
+    # Dispatch (issue/close the response) is demo-gated even though admin holds the cap.
+    assert client.post(f"/requests/{reg.json()['id']}/dispatch").status_code == 403

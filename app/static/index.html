@@ -259,6 +259,15 @@
     color:#fff;box-shadow:inset 3px 0 0 #36b0c2}
   .sidebar .side-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.10);
     font-size:11px;color:#9bc0d8}
+  /* View switching: the sidebar shows one section at a time (composes with the
+     capability `hidden` attr and kb-only rules — a panel shows only if in the
+     active view AND its role allows it). */
+  .view-hidden{display:none !important}
+  /* Public demo: hide write/admin controls (the server also refuses them). */
+  body.demo .demo-hide{display:none !important}
+  .demo-note{font-size:11.5px;color:var(--grey);background:#f4f7fa;border:1px solid var(--line);
+    border-radius:8px;padding:8px 11px;margin:0 0 10px}
+  body:not(.demo) .demo-note{display:none}
   body:not(.cap-read) .nav-read{display:none}
   body:not(.cap-contribute) .nav-contribute{display:none}
   body:not(.cap-admin) .nav-admin{display:none}
@@ -396,22 +405,16 @@
     <div><div class="bt">Oxfordshire&nbsp;CC</div><div class="bs">FOI · Information Management</div></div>
   </div>
   <nav>
-    <button class="navitem nav-read active" onclick="navTo(this,'dash')">
+    <button class="navitem nav-read active" data-view="dashboard" onclick="navTo(this,'dashboard')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Dashboard</button>
-    <button class="navitem nav-read" onclick="navTo(this,'inboxPanel')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> FOI inbox</button>
-    <button class="navitem nav-read" onclick="navTo(this,'queuePanel')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> Cases</button>
-    <button class="navitem nav-read" onclick="navTo(this,'analytics')">
+    <button class="navitem nav-read" data-view="cases" onclick="navTo(this,'cases')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg> Cases &amp; inbox</button>
+    <button class="navitem nav-read" data-view="analytics" onclick="navTo(this,'analytics')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> Analytics</button>
-    <button class="navitem nav-contribute" onclick="navTo(this,'uploadPanel')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg> Upload</button>
-    <button class="navitem nav-contribute" onclick="navTo(this,'kbPanel')">
+    <button class="navitem nav-contribute" data-view="knowledge" onclick="navTo(this,'knowledge')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M4 16h15"/></svg> Knowledge base</button>
-    <button class="navitem nav-admin" onclick="navTo(this,'usersPanel')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg> Accounts</button>
-    <button class="navitem nav-admin" onclick="navTo(this,'notifyPanel')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Notifications</button>
+    <button class="navitem nav-admin" data-view="settings" onclick="navTo(this,'settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.6 7.6 0 0 0-2.6-1.5L14 .9h-4l-.5 2.7A7.6 7.6 0 0 0 6.9 5l-2.3-1-2 3.4 2 1.5a7.8 7.8 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.6 7.6 0 0 0 2.6 1.5l.5 2.7h4l.5-2.7a7.6 7.6 0 0 0 2.6-1.5l2.3 1 2-3.4z"/></svg> Settings</button>
   </nav>
   <div class="side-foot">Oxfordshire County Council<br>Information Management Team</div>
 </aside>
@@ -445,10 +448,11 @@
 </div>
 
 <section class="dash" id="dash" hidden>
-  <div id="overdueAlert"></div>
-  <div id="trendAlert"></div>
-  <div class="cards" id="cards"></div>
-  <div class="panel" id="processPanel">
+  <div class="demo-note">👋 <strong>Demo</strong> — explore freely and walk a case through the workflow. Changes that manage accounts, dispatch responses or edit the knowledge base are turned off in this public demo.</div>
+  <div id="overdueAlert" data-view="dashboard"></div>
+  <div id="trendAlert" data-view="dashboard"></div>
+  <div class="cards" id="cards" data-view="dashboard"></div>
+  <div class="panel" id="processPanel" data-view="dashboard">
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">Process — click a stage to see its cases</h2>
       <button class="ghost small" id="clearFilterBtn" hidden onclick="clearFilter()">Show all stages</button>
@@ -456,7 +460,7 @@
     <div class="pipeline" id="pipeline"></div>
     <div class="offpipe" id="offpipe"></div>
   </div>
-  <div class="panel" id="analytics">
+  <div class="panel" id="analytics" data-view="analytics">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Analytics</h2>
       <button class="ghost small" onclick="refreshDashboard()">↻ Refresh</button></div>
     <div class="an-top">
@@ -472,12 +476,12 @@
     </div>
     <div id="schemeSLA" style="margin-top:18px"></div>
   </div>
-  <div class="dl-wrap">
+  <div class="dl-wrap" data-view="dashboard">
     <div class="panel"><h2 class="dash-h">⚠ Overdue / breached <span id="ov_n"></span></h2><div id="dl_overdue"></div></div>
     <div class="panel"><h2 class="dash-h">⏰ Due soon <span id="due_n"></span></h2><div id="dl_due"></div></div>
   </div>
   <!-- Upload: submit a document/facts for review (separate from the KB library) -->
-  <div class="panel" id="uploadPanel" hidden>
+  <div class="panel demo-hide" id="uploadPanel" hidden data-view="knowledge">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Upload a document <span class="rolechip" id="upRoleChip" style="background:#0f3d57">contributor</span></h2></div>
     <div class="note" style="margin:0 0 10px">Submit a document or facts for the knowledge base. Private uploads are <strong>submitted for review</strong> — they aren’t used in any draft until a reviewer approves them (see the review queue under <strong>Knowledge base</strong>). Tag it to a project/scheme to scope it.</div>
     <div class="grid2">
@@ -497,13 +501,13 @@
     <div class="note" style="margin:6px 0 0">Accepts PDF, Word (.docx), text and HTML. Scanned/image-only PDFs aren’t supported (no OCR).</div>
   </div>
 
-  <div class="panel" id="kbPanel" hidden>
+  <div class="panel" id="kbPanel" hidden data-view="knowledge">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Knowledge base <span class="rolechip" id="kbRoleChip" style="background:#0f3d57">contributor</span></h2>
       <span class="note" id="kbStats"></span></div>
     <div class="note" style="margin:0 0 8px">The reviewed corpus the auto-drafter grounds on and cites. Add new material from <strong>Upload</strong>; approve pending submissions in the review queue below.</div>
     <div class="cardhead" id="kbRefreshBox" hidden style="background:#f4f7fa;border:1px solid #e1e8ef;border-radius:8px;padding:10px 12px;margin:0 0 12px">
       <div><strong>Public information</strong> <span class="note" id="kbFreshness">checking…</span></div>
-      <button class="secondary small" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
+      <button class="secondary small demo-hide" id="kbRefreshBtn" onclick="refreshKB()">Refresh now</button>
     </div>
     <!-- Knowledge grouped by owning department -> scheme; click a scheme to filter. -->
     <div id="kbBreakdown" style="margin:0 0 12px"></div>
@@ -519,11 +523,11 @@
   </div>
 
   <!-- Admin: department & user accounts -->
-  <div class="panel" id="usersPanel" hidden style="margin-top:14px">
+  <div class="panel" id="usersPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Accounts <span class="rolechip" style="background:#0f3d57">admin</span></h2>
       <span class="note" id="usersStats"></span></div>
-    <div class="note" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
-    <div class="grid2">
+    <div class="note demo-hide" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
+    <div class="grid2 demo-hide">
       <div><label>Username</label><input id="nu_username" placeholder="e.g. childrens-services" /></div>
       <div><label>Full name</label><input id="nu_fullname" placeholder="e.g. Children’s Services" /></div>
       <div><label>Role</label><select id="nu_role">
@@ -537,30 +541,30 @@
       <div><label>Department (for department role)</label><input id="nu_department" placeholder="e.g. Children’s Services" /></div>
       <div><label>Password</label><input id="nu_password" type="password" placeholder="min 6 characters" /></div>
     </div>
-    <div class="btnrow"><button id="uAddBtn" onclick="addUser()">Create account</button></div>
+    <div class="btnrow demo-hide"><button id="uAddBtn" onclick="addUser()">Create account</button></div>
     <div class="maillist" id="usersList" style="max-height:28vh;margin-top:12px"></div>
   </div>
 
   <!-- Admin: breach-trend notifications (email when a scheme deteriorates) -->
-  <div class="panel" id="notifyPanel" hidden style="margin-top:14px">
+  <div class="panel" id="notifyPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Breach-trend notifications <span class="rolechip" style="background:#0f3d57">admin</span></h2>
       <span class="note" id="notifyStats"></span></div>
     <div class="note" style="margin:0 0 8px">Emails a distribution list when a scheme starts deteriorating (breaches trending up). Runs from cron (<code>python -m app.notify</code>) or on demand here. With the stub provider nothing is sent — the message that <em>would</em> be emailed is recorded below.</div>
-    <div class="btnrow"><button class="secondary small" id="notifyRunBtn" onclick="runNotifications()">Run check now</button></div>
+    <div class="btnrow demo-hide"><button class="secondary small" id="notifyRunBtn" onclick="runNotifications()">Run check now</button></div>
     <div class="maillist" id="notifyList" style="max-height:34vh;margin-top:12px"></div>
   </div>
 
   <!-- Admin: per-department SLA digest -->
-  <div class="panel" id="digestPanel" hidden style="margin-top:14px">
+  <div class="panel" id="digestPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Department SLA digests <span class="rolechip" style="background:#0f3d57">admin</span></h2>
       <span class="note" id="digestStats"></span></div>
     <div class="note" style="margin:0 0 8px">A weekly summary per owning department (open / overdue / due-soon, breach rate, deteriorating schemes). Runs from cron (<code>python -m app.digest</code>) or on demand here; recipients route per department (<code>FOI_DIGEST_RECIPIENTS</code>) with the central IG list as fallback. The stub provider records each digest below without sending.</div>
-    <div class="btnrow"><button class="secondary small" id="digestRunBtn" onclick="runDigests()">Send digests now</button></div>
+    <div class="btnrow demo-hide"><button class="secondary small" id="digestRunBtn" onclick="runDigests()">Send digests now</button></div>
     <div class="maillist" id="digestList" style="max-height:34vh;margin-top:12px"></div>
   </div>
 </section>
 
-<div class="lists">
+<div class="lists" data-view="cases">
   <!-- FOI inbox (email-style list) -->
   <div class="panel" id="inboxPanel">
     <div class="cardhead">
@@ -624,12 +628,22 @@ let current = null;
 let me = null;                       // the signed-in user {username, full_name, role, capabilities}
 const can = cap => !!me && me.capabilities.includes(cap);
 
-// Sidebar nav: highlight the item and scroll its section into view.
-function navTo(el, id){
-  document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
-  el.classList.add('active');
-  const t=document.getElementById(id);
-  if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
+// Sidebar nav: switch to a single view (one section at a time) instead of
+// scrolling one long page. Panels carry data-view; only the active view shows.
+let currentView="dashboard";
+function navTo(el, view){ showView(view); }
+function showView(view){
+  currentView=view;
+  document.querySelectorAll('.navitem[data-view]').forEach(n=>
+    n.classList.toggle('active', n.dataset.view===view));
+  document.querySelectorAll('[data-view]').forEach(el=>{
+    if(el.classList.contains('navitem')) return;          // nav buttons keep their own state
+    el.classList.toggle('view-hidden', el.dataset.view!==view);
+  });
+  // The right rail (attention/recent) only makes sense on the dashboard.
+  const rail=document.getElementById("rrail");
+  if(rail) rail.classList.toggle('view-hidden', view!=="dashboard");
+  window.scrollTo(0,0);
 }
 
 // Right rail: user can hide it to give the dashboard the full width. The choice
@@ -705,6 +719,7 @@ function startApp(){
   document.body.classList.toggle("cap-read", can("read"));
   document.body.classList.toggle("cap-contribute", can("contribute"));
   document.body.classList.toggle("cap-admin", can("admin"));
+  document.body.classList.toggle("demo", !!me.demo);   // hide write controls in the public demo
   // Department contributors have no case access (CONTRIBUTE only): show them the
   // knowledge-base panel alone, not the case dashboard / queue / requester data.
   const caseUser=can("read");
@@ -720,6 +735,7 @@ function startApp(){
   loadUsers();   // admin only (self-gates)
   loadNotifications();   // admin only (self-gates)
   loadDigests();   // admin only (self-gates)
+  showView(caseUser ? "dashboard" : "knowledge");   // start on one clean view
 }
 
 function flagBadge(f){return `<span class="flag ${f}">${f.toUpperCase()}</span>`;}
@@ -732,6 +748,13 @@ const ACTION_LABEL={
   "dispatch:sent":"Response dispatched","triage:classified":"Triaged"
 };
 function actionLabel(a){ return ACTION_LABEL[a]||String(a||"").replace(/[._:]+/g," ").replace(/\b\w/g,m=>m.toUpperCase()); }
+
+// Plain-language labels for domain jargon shown in the case view.
+const REGIME_LABEL={FOIA:"FOIA — general information", EIR:"EIR — environmental info"};
+const HOLDING_LABEL={held:"Information held", partial:"Partly held",
+  not_held:"Information not held", unknown:"To be determined", "":"To be determined"};
+const regimeLabel=r=>REGIME_LABEL[r]||r||"—";
+const holdingLabel=h=>HOLDING_LABEL[h]||(String(h||"").replace(/_/g," ")||"—");
 
 function toast(msg){
   const wrap=document.getElementById("toast");
@@ -1278,7 +1301,7 @@ function renderKBList(){
         ${sourcePill(d.source)}${statusPill(d.status)}
         <span class="q-sub">${escapeHtml(d.title||"(untitled)")} ${projectPill(d.project)}${d.department?` · ${escapeHtml(d.department)}`:""}</span>
         <span class="q-meta">${d.content_chars.toLocaleString()} chars · ${d.chunks} chunks${d.uploaded_by?` · by ${escapeHtml(d.uploaded_by)}`:""}</span>
-        ${isAdmin?`<button class="secondary small" onclick="deleteKBDoc(${d.id})">Delete</button>`:""}</div>`).join("")
+        ${isAdmin?`<button class="secondary small demo-hide" onclick="deleteKBDoc(${d.id})">Delete</button>`:""}</div>`).join("")
       : '<div class="empty">No documents in this scheme.</div>');
 }
 
@@ -1298,8 +1321,8 @@ async function loadKBPending(isAdmin){
         ${sourcePill(d.source)}
         <span class="q-sub">${escapeHtml(d.title||"(untitled)")} ${projectPill(d.project)}</span>
         <span class="q-meta">${d.content_chars.toLocaleString()} chars${d.uploaded_by?` · by ${escapeHtml(d.uploaded_by)}`:""}</span>
-        <button class="green small" onclick="reviewKBDoc(${d.id},'approve')">Approve</button>
-        <button class="secondary small" onclick="reviewKBDoc(${d.id},'reject')">Reject</button>
+        <button class="green small demo-hide" onclick="reviewKBDoc(${d.id},'approve')">Approve</button>
+        <button class="secondary small demo-hide" onclick="reviewKBDoc(${d.id},'reject')">Reject</button>
       </div>`;
     document.getElementById("kbPending").innerHTML=Object.keys(groups).sort().map(dept=>
       `<div class="note" style="margin:6px 0 4px;font-weight:700;color:#9a3412">${escapeHtml(dept)}</div>`
@@ -1757,7 +1780,7 @@ function actionsFor(c){
   }
   if(s==="7_sign_off"){
     if(signedOff) return can("dispatch")
-      ? `<div class="btnrow"><button class="green" onclick="dispatch()">Dispatch to requester →</button></div><div class="note">Authorised. Ready for the FOI team to send.</div>`
+      ? `<div class="btnrow demo-hide"><button class="green" onclick="dispatch()">Dispatch to requester →</button></div><div class="note">Authorised. Ready for the FOI team to send.</div>`
       : needs("Authorised — awaiting the FOI team to dispatch.");
     return can("sign_off")
       ? `<div class="btnrow"><button class="purple" onclick="signoff(true)">Authorise sign-off →</button><button class="secondary" onclick="signoff(false)">Reject ↩</button></div>`
@@ -1787,11 +1810,11 @@ function render(sla){
         <div class="kv">
           <div class="k">Subject</div><div>${c.subject||"—"}</div>
           <div class="k">Requester</div><div>${c.requester_name} (${c.requester_type})</div>
-          <div class="k">Regime</div><div>${c.regime}</div>
+          <div class="k">Request type</div><div>${escapeHtml(regimeLabel(c.regime))}</div>
           <div class="k">Responsible</div><div>${escapeHtml(c.responsible_person||"FOI team")} · ${escapeHtml(c.responsible_department||"FOI team")}</div>
           <div class="k">Scheme</div><div>${c.project?escapeHtml(projLabel(c.project)):"—"}</div>
-          <div class="k">Holding</div><div>${c.holding_status}</div>
-          <div class="k">Confidence</div><div>${(c.confidence*100).toFixed(0)}%</div>
+          <div class="k">Information held?</div><div>${escapeHtml(holdingLabel(c.holding_status))}</div>
+          <div class="k">Draft confidence</div><div>${(c.confidence*100).toFixed(0)}%</div>
           <div class="k">Deadline</div><div>${c.deadline?c.deadline.slice(0,10):"—"} ${sla?flagBadge(sla.flag):""} ${sla&&sla.paused?'<span class="pill paused">clock paused</span>':""}</div>
           ${sla?`<div class="k">Working days left</div><div>${sla.working_days_remaining}${sla.working_days_paused?` · paused ${sla.working_days_paused}`:""}</div>`:""}
         </div>

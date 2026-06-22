@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import schemas
-from ..auth import Cap, require
+from ..auth import Cap, require, require_live
 from ..config import get_settings
 from ..database import get_db
 from ..enums import Stage
@@ -147,7 +147,7 @@ def sign_off(request_id: int, payload: schemas.SignOffIn, db: Session = Depends(
 
 @router.post("/{request_id}/dispatch", response_model=schemas.RequestOut)
 def dispatch(request_id: int, db: Session = Depends(get_db),
-             user: User = Depends(require(Cap.DISPATCH))):
+             user: User = Depends(require_live(Cap.DISPATCH))):
     """Stage 8 — FOI team issues the response and closes the case."""
     req = _get(db, request_id)
     return _guard(lambda: casework.dispatch(db, req, foi_officer=user.username))
