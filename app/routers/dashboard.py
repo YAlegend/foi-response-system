@@ -11,6 +11,7 @@ from ..database import get_db
 from ..enums import Stage
 from ..models import FOIRequest, User
 from ..projects import label as project_label
+from ..projects import owning_department as scheme_department
 from ..sla import sla_state
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -23,6 +24,7 @@ def _card(req: FOIRequest, st: dict) -> dict:
         "stage": req.stage, "project": req.project or "", "deadline": st["deadline"],
         "working_days_remaining": st["working_days_remaining"],
         "flag": st["flag"], "paused": st["paused"],
+        "owner": (req.owning_department or scheme_department(req.project) or "").strip(),
     }
 
 
