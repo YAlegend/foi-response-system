@@ -171,6 +171,9 @@
   .sla-row{cursor:pointer}
   .sla-row:hover{background:#f0f7ff}
   .sla-row.active{background:#e0efff;box-shadow:inset 3px 0 0 var(--blue)}
+  .mini-in{font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;
+    background:#fff;color:var(--ink);min-width:150px}
+  .mini-in:focus{outline:none;border-color:var(--blue)}
   .ch-h{font-size:12px;color:var(--ink);margin:0 0 8px;font-weight:700}
   .bar-row{display:grid;grid-template-columns:120px 1fr 32px;gap:8px;align-items:center;margin-bottom:5px;border-radius:6px}
   .bar-row.click{cursor:pointer;padding:1px 4px;margin-left:-4px}
@@ -917,6 +920,13 @@ let projectLabels={};   // scheme key -> display label, learned from analytics
 const projLabel=k=>projectLabels[k]||(k||"").replace(/-/g," ");
 let trendWeeks=[];      // week labels for the per-scheme breach-trend sparkline
 
+// --- Scheme SLA table: filter / sort / cap (a full crawl can yield 100s) ------
+let schemeSLAData=[];          // full per-scheme SLA rows from analytics
+let schemeSLAQuery="";         // free-text filter on scheme name/key
+let schemeSLASort="total";     // total | overdue | breach_rate | label
+let schemeSLAAll=false;        // false -> cap to the top N, true -> show all
+const SCHEME_SLA_TOP=8;        // default cap before "show all"
+
 // Mini bar sparkline of weekly breach counts. Empty weeks show a faint tick so
 // the timeline reads left→right; breaches are red and scaled to the row's peak.
 function sparkBars(vals){
@@ -999,16 +1009,58 @@ function renderAnalytics(){
 function renderSchemeSLA(rows){
   const el=document.getElementById("schemeSLA");
   if(!el) return;
-  if(!rows||!rows.length){ el.innerHTML=""; return; }
+  schemeSLAData=rows||[];
+  if(!schemeSLAData.length){ el.innerHTML=""; return; }
+  // Build the heading + filter toolbar once, so typing in the filter or a
+  // periodic refresh doesn't rebuild (and blur) the input. The table itself
+  // lives in #slaTableWrap and is redrawn on every filter/sort/cap change.
+  if(!document.getElementById("slaTableWrap")){
+    el.innerHTML=`<div class="cardhead" style="margin:4px 0 8px;align-items:center;gap:10px;flex-wrap:wrap">
+        <h3 class="ch-h" style="margin:0">Scheme SLA performance — click a row to filter the queue</h3>
+        <div class="btnrow" style="gap:8px;align-items:center;flex-wrap:wrap;margin:0">
+          <input id="slaQuery" class="mini-in" placeholder="Filter schemes…" oninput="drawSchemeSLA()" />
+          <select id="slaSort" class="mini-in" onchange="drawSchemeSLA()">
+            <option value="total">Most cases</option>
+            <option value="overdue">Most overdue</option>
+            <option value="breach_rate">Highest breach rate</option>
+            <option value="label">Name (A–Z)</option>
+          </select>
+        </div>
+      </div>
+      <div id="slaTableWrap"></div>`;
+    const q=document.getElementById("slaQuery"); if(q) q.value=schemeSLAQuery;
+    const s=document.getElementById("slaSort"); if(s) s.value=schemeSLASort;
+  }
+  drawSchemeSLA();
+}
+
+function schemeSLAToggleAll(){ schemeSLAAll=!schemeSLAAll; drawSchemeSLA(); }
+
+function drawSchemeSLA(){
+  const wrap=document.getElementById("slaTableWrap"); if(!wrap) return;
+  const qel=document.getElementById("slaQuery"), sel=document.getElementById("slaSort");
+  if(qel) schemeSLAQuery=qel.value;
+  if(sel) schemeSLASort=sel.value;
+  const q=schemeSLAQuery.trim().toLowerCase();
+  const cmp={
+    total:(a,b)=>b.total-a.total,
+    overdue:(a,b)=>b.overdue-a.overdue||b.total-a.total,
+    breach_rate:(a,b)=>b.breach_rate-a.breach_rate||b.total-a.total,
+    label:(a,b)=>(a.label||"").localeCompare(b.label||""),
+  }[schemeSLASort]||((a,b)=>b.total-a.total);
+  const matched=schemeSLAData
+    .filter(s=>!q || (s.label||"").toLowerCase().includes(q) || (s.key||"").toLowerCase().includes(q))
+    .sort(cmp);
+  const shown=schemeSLAAll ? matched : matched.slice(0, SCHEME_SLA_TOP);
+
   const dash='<span style="color:#94a3b8">—</span>';
   const cell=(v,suf="")=>v==null?dash:v+suf;
   const rateCol=r=>r>=50?"#b91c1c":r>=20?"#b45309":"#15803d";
-  el.innerHTML=`<h3 class="ch-h" style="margin-top:4px">Scheme SLA performance — click a row to filter the queue</h3>
-    <table class="sla-tbl"><thead><tr>
+  const table=`<table class="sla-tbl"><thead><tr>
       <th style="text-align:left">Scheme</th><th>Cases</th><th>Open</th><th>Overdue</th>
       <th>Closed</th><th>Breach rate</th><th>On-time</th><th>Avg days</th>
       <th>Breach trend (8 wk)</th></tr></thead><tbody>`+
-    rows.map(s=>`<tr class="sla-row${fActive('project',s.key)?' active':''}"
+    (shown.length?shown.map(s=>`<tr class="sla-row${fActive('project',s.key)?' active':''}"
         onclick="setFilter('project','${s.key}','${escapeAttr(s.label)}')">
       <td style="text-align:left">${escapeHtml(s.label)}</td>
       <td>${s.total}</td><td>${s.open}</td>
@@ -1018,7 +1070,19 @@ function renderSchemeSLA(rows){
       <td>${cell(s.on_time_pct,"%")}</td>
       <td>${cell(s.avg_working_days_to_close)}</td>
       <td>${sparkBars(s.trend)}</td>
-    </tr>`).join("")+`</tbody></table>`;
+    </tr>`).join("")
+      :`<tr><td colspan="9" class="empty" style="text-align:left">No schemes match “${escapeHtml(schemeSLAQuery.trim())}”.</td></tr>`)
+    +`</tbody></table>`;
+
+  let foot="";
+  if(matched.length>SCHEME_SLA_TOP){
+    foot=`<div class="note" style="margin-top:8px">Showing ${shown.length} of ${matched.length} schemes`+
+      (q?` matching “${escapeHtml(schemeSLAQuery.trim())}”`:"")+
+      ` · <a href="#" onclick="schemeSLAToggleAll();return false">${schemeSLAAll?`show top ${SCHEME_SLA_TOP}`:"show all"}</a></div>`;
+  } else if(q){
+    foot=`<div class="note" style="margin-top:8px">${matched.length} scheme${matched.length===1?"":"s"} match this filter.</div>`;
+  }
+  wrap.innerHTML=table+foot;
 }
 
 function escapeAttr(s){ return escapeHtml(String(s)).replace(/"/g,"&quot;"); }
