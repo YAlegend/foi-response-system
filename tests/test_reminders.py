@@ -23,22 +23,31 @@ def test_responsible_prefers_explicit_owner_then_scheme(db):
     assert reminders.responsible_for(_req(project="")) == ""          # unassigned
 
 
-def test_send_reminder_records_message_and_audit(db, monkeypatch):
-    from app.config import get_settings
-    s = get_settings()
-    monkeypatch.setattr(s, "digest_recipients", "")               # no per-dept routing
-    monkeypatch.setattr(s, "notify_recipients", "ig@oxfordshire.gov.uk")  # central fallback
-
+def test_send_reminder_addresses_the_named_officer(db):
     req = _req(reference="FOI/T/3", project="traffic-filters")
     db.add(req); db.commit(); db.refresh(req)
 
     out = reminders.send_reminder(db, req, actor="tester")
     assert out["ok"] and out["reference"] == "FOI/T/3"
-    assert out["department"] == owning_department("traffic-filters")
-    assert out["recipients"] == ["ig@oxfordshire.gov.uk"]         # fell back to central list
+    assert out["department"] == owning_department("traffic-filters")   # Highways & Transport
+    assert out["person"] == "Priya Shah"                               # built-in demo officer
+    assert out["recipients"] == ["priya.shah@oxfordshire.gov.uk"]      # the officer's mailbox
     assert "FOI/T/3" in out["subject"]
 
     events = db.execute(
         select(AuditEvent).where(AuditEvent.action == "reminder_sent")).scalars().all()
     assert len(events) == 1
-    assert owning_department("traffic-filters") in events[0].detail
+    assert "Priya Shah" in events[0].detail            # human-readable, no addresses
+
+
+def test_unassigned_falls_back_to_central_foi_officer(db, monkeypatch):
+    from app.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "notify_recipients", "ig@oxfordshire.gov.uk")
+    req = _req(reference="FOI/T/4", project="")        # no scheme, no owner
+    db.add(req); db.commit(); db.refresh(req)
+
+    out = reminders.send_reminder(db, req)
+    assert out["person"] == s.foi_officer_name
+    assert out["department"] == "FOI team"
+    assert out["recipients"] == ["ig@oxfordshire.gov.uk"]   # central IG list

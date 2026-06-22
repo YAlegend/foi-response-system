@@ -10,6 +10,7 @@ from ..config import get_settings
 from ..database import get_db
 from ..enums import Stage
 from ..models import FOIRequest, User
+from ..people import officer_for
 from ..projects import label as project_label
 from ..projects import owning_department as scheme_department
 from ..sla import sla_state
@@ -19,12 +20,15 @@ settings = get_settings()
 
 
 def _card(req: FOIRequest, st: dict) -> dict:
+    dept = (req.owning_department or scheme_department(req.project) or "").strip()
+    officer = officer_for(dept)
     return {
         "id": req.id, "reference": req.reference, "subject": req.subject,
         "stage": req.stage, "project": req.project or "", "deadline": st["deadline"],
         "working_days_remaining": st["working_days_remaining"],
         "flag": st["flag"], "paused": st["paused"],
-        "owner": (req.owning_department or scheme_department(req.project) or "").strip(),
+        "owner": dept or "FOI team",
+        "owner_person": officer["name"],
     }
 
 

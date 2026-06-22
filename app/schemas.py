@@ -94,6 +94,8 @@ class RequestOut(BaseModel):
 class RequestDetail(RequestOut):
     drafts: list[DraftOut] = []
     events: list[EventOut] = []
+    responsible_person: str = ""        # named officer on the hook for this case
+    responsible_department: str = ""    # their team (or "FOI team" when unassigned)
 
 
 # The acting officer on these actions is taken from the authenticated session,

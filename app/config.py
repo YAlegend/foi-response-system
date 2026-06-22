@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     notify_provider: str = "stub"
     notify_recipients: str = ""        # comma-separated, e.g. "ig@oxfordshire.gov.uk"
     notify_from: str = "foi-no-reply@oxfordshire.gov.uk"
+    # Named responsible officers. Built-in demo names are used when this is blank;
+    # override as "Department=Name <email>; Department=Name <email>".
+    responsible_officers: str = ""
+    foi_officer_name: str = "Jordan Ellis"     # central FOI/IG officer (the fallback owner)
+    foi_officer_email: str = ""                # blank -> falls back to notify_recipients
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
