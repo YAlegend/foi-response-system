@@ -153,7 +153,13 @@
     border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;margin-bottom:6px}
   .dl-item:hover{border-color:var(--blue)}
   .dl-ref{font-weight:700;font-size:12px} .dl-sub{font-size:11px;color:var(--grey)}
+  .dl-main{min-width:0}
+  .dl-owner{font-size:11px;color:var(--accent);font-weight:600;margin-top:2px}
   .dl-meta{font-size:11px;text-align:right;white-space:nowrap;color:var(--grey)}
+  .dl-remind{margin-top:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:7px;
+    border:1px solid #d6e6f5;background:#eef4fe;color:var(--accent);cursor:pointer}
+  .dl-remind:hover{background:#1d6fb8;color:#fff;border-color:#1d6fb8}
+  .dl-remind:disabled{opacity:.6;cursor:default}
   .qfilter{font-size:11px;color:var(--blue);cursor:pointer}
   /* Analytics */
   .kpis{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px}
@@ -906,12 +912,35 @@ function renderDeadlines(elId,countId,items,total){
   const el=document.getElementById(elId);
   document.getElementById(countId).textContent=total?`(${total})`:"";
   if(!items.length){ el.innerHTML='<div class="empty" style="padding:12px">None.</div>'; return; }
-  el.innerHTML=items.map(c=>`<div class="dl-item" onclick="openCase(${c.id})">
-      <div><div class="dl-ref">${c.reference} ${flagBadge(c.flag)}</div>
-        <div class="dl-sub">${escapeHtml((c.subject||"").slice(0,40))} · ${STAGE_LABEL[c.stage]||c.stage}</div></div>
-      <div class="dl-meta">${c.deadline}<br>${c.working_days_remaining} wd left</div>
-    </div>`).join("")
+  const canRemind=can("process");
+  el.innerHTML=items.map(c=>{
+    const owner=c.owner||"Unassigned";
+    const btn=canRemind?`<button class="dl-remind" title="Email a reminder to ${escapeAttr(owner)}"
+        onclick="event.stopPropagation();sendReminder(${c.id},this)">Remind</button>`:"";
+    return `<div class="dl-item" onclick="openCase(${c.id})">
+      <div class="dl-main"><div class="dl-ref">${c.reference} ${flagBadge(c.flag)}</div>
+        <div class="dl-sub">${escapeHtml((c.subject||"").slice(0,40))} · ${STAGE_LABEL[c.stage]||c.stage}</div>
+        <div class="dl-owner">👤 Responsible: ${escapeHtml(owner)}</div></div>
+      <div class="dl-meta">${c.deadline}<br>${c.working_days_remaining} wd left${btn?`<br>${btn}`:""}</div>
+    </div>`;}).join("")
     + (total>items.length?`<div class="note">+${total-items.length} more…</div>`:"");
+}
+
+// Email the responsible department a deadline reminder. With the stub provider
+// nothing is sent — the message is recorded (visible in the case audit trail).
+async function sendReminder(id, btn){
+  const orig=btn.textContent;
+  btn.disabled=true; btn.textContent="Sending…";
+  try{
+    const r=await api(`/requests/${id}/remind`,"POST");
+    const who=r.department||"the team";
+    toast(r.provider==="stub"
+      ? `Reminder for ${r.reference} recorded for ${who} (demo — no email sent)`
+      : (r.sent?`Reminder for ${r.reference} emailed to ${who}`
+               :`No recipients configured for ${who}`));
+    btn.textContent="Reminded ✓";
+  }catch(e){ btn.textContent="Failed"; toast("Reminder failed: "+(e.message||e)); }
+  finally{ setTimeout(()=>{ btn.disabled=false; btn.textContent=orig; }, 2600); }
 }
 
 const OUTCOME_COLOR={granted_full:"#15803d",granted_partial:"#0d9488",not_held:"#64748b",refused:"#b91c1c",open:"#1d6fb8"};

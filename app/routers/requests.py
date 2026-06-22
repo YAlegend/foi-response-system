@@ -11,7 +11,7 @@ from ..config import get_settings
 from ..database import get_db
 from ..enums import Stage
 from ..models import FOIRequest, User
-from ..services import casework
+from ..services import casework, reminders
 from ..sla import sla_state
 from ..workflow import TransitionError
 
@@ -69,6 +69,14 @@ def get_sla(request_id: int, db: Session = Depends(get_db),
                      settings.sla_amber_day, settings.sla_red_day,
                      paused_days=req.clock_paused_days or 0,
                      paused_since=req.clarification_requested_at)
+
+
+@router.post("/{request_id}/remind")
+def remind(request_id: int, db: Session = Depends(get_db),
+           user: User = Depends(require(Cap.PROCESS))):
+    """Send the responsible department a reminder that this case is due/overdue."""
+    req = _get(db, request_id)
+    return reminders.send_reminder(db, req, actor=user.username)
 
 
 def _guard(fn):
