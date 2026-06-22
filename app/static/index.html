@@ -806,17 +806,39 @@ function flowchartSVG(){
     const r=slotM*i+slotM/2+mBW/2, l=slotM*(i+1)+slotM/2-mBW/2;
     arrows+=`<path class="fc-edge" d="M${r},${cyM} L${l},${cyM}" marker-end="url(#fcArrow)"/>`;
   }
-  // Off-pipeline row — its own labelled band; fewer boxes, so they're wider.
+  // Off-pipeline row — fewer boxes, so they're wider. (Box sizes unchanged.)
   const slotO=W/off.length, oBW=slotO-28;
-  const offBoxes=off.map((nd,i)=>box(nd, slotO*i+slotO/2, offY, oBW)).join("");
-  const divY=mainY+BH+26;
-  const band=`<line x1="0" y1="${divY}" x2="${W}" y2="${divY}" stroke="#e6ecf3" stroke-width="1.5"/>
-    <text x="0" y="${divY+19}" class="fc-elabel" text-anchor="start" style="font-size:11.5px;fill:#94a3b8;letter-spacing:.4px">OFF-PIPELINE &amp; REVIEW LOOPS — cases branch here (clarification, department review, internal review) and rejoin</text>`;
+  const offCx=j=>slotO*j+slotO/2;
+  const offBoxes=off.map((nd,j)=>box(nd, offCx(j), offY, oBW)).join("");
+
+  // Dashed connectors tying each off-pipeline / review stage to the main stage it
+  // branches from (down-arrow) or rejoins at (up-arrow). Links only — no resizing.
+  const mainBottom=mainY+BH, railY=mainBottom+(offY-mainBottom)/2;   // mid-gap rail
+  const mainCx=key=>{ const i=main.findIndex(n=>n.key===key); return i<0?NaN:slotM*i+slotM/2; };
+  const BRANCHES=[
+    {off:"awaiting_clarification", main:"2_triage",          label:"if unclear", up:false},
+    {off:"4_department_review",    main:"3_retrieval_draft",  label:"send draft", up:false},
+    {off:"5_update_response",      main:"6_compliance_gate",  label:"rejoin",     up:true},
+    {off:"internal_review",        main:"closed",             label:"on appeal",  up:false},
+  ];
+  let branches="", blabels="";
+  BRANCHES.forEach(b=>{
+    const j=off.findIndex(n=>n.key===b.off), mx=mainCx(b.main);
+    if(j<0 || !isFinite(mx)) return;
+    const ox=offCx(j);
+    const d=b.up
+      ? `M${ox},${offY} L${ox},${railY} L${mx},${railY} L${mx},${mainBottom}`
+      : `M${mx},${mainBottom} L${mx},${railY} L${ox},${railY} L${ox},${offY}`;
+    branches+=`<path class="fc-edge loop" d="${d}" marker-end="url(#fcArrow)"/>`;
+    blabels+=`<text class="fc-elabel" x="${(ox+mx)/2}" y="${railY-5}" text-anchor="middle">${b.label}</text>`;
+  });
+  const divY=mainBottom+18;
+  const band=`<line x1="0" y1="${divY}" x2="${W}" y2="${divY}" stroke="#eef2f7" stroke-width="1.5"/>`;
   const H=offY+BH+8;
   return `<svg viewBox="-6 -6 ${W+12} ${H+12}" role="img" aria-label="FOI process pipeline">
     <defs><marker id="fcArrow" markerWidth="8" markerHeight="8" refX="5.5" refY="3" orient="auto">
       <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
-    ${arrows}${band}${mainBoxes}${offBoxes}</svg>`;
+    ${arrows}${band}${branches}${blabels}${mainBoxes}${offBoxes}</svg>`;
 }
 
 async function loadDashboard(){
@@ -870,7 +892,7 @@ function renderDashboard(){
       <div class="m-num">${n}</div><div class="m-label">${label}</div></div>`).join("");
 
   document.getElementById("pipeline").innerHTML=`<div class="fc-wrap">${flowchartSVG()}</div>`;
-  document.getElementById("offpipe").innerHTML=`<div class="fc-legend">→ pipeline progress &nbsp;·&nbsp; dashed = off-pipeline stages &nbsp;·&nbsp; click any stage to see its cases</div>`;
+  document.getElementById("offpipe").innerHTML=`<div class="fc-legend">→ pipeline progress &nbsp;·&nbsp; dashed links drop to the off-pipeline &amp; review loops (clarification, department review, update, internal review) and rejoin &nbsp;·&nbsp; click any stage to see its cases</div>`;
 
   renderDeadlines("dl_overdue","ov_n",dashData.deadlines.overdue,dashData.deadlines.overdue_total);
   renderDeadlines("dl_due","due_n",dashData.deadlines.due_soon,dashData.deadlines.due_soon_total);
