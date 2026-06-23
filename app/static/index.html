@@ -180,6 +180,11 @@
   .mini-in{font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;
     background:#fff;color:var(--ink);min-width:150px}
   .mini-in:focus{outline:none;border-color:var(--blue)}
+  .inbox-filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+  .inbox-filter .mini-in{min-width:0}
+  .inbox-filter input#inboxSearch{flex:1 1 200px}
+  .mini-lbl{font-size:11px;color:var(--grey);display:flex;align-items:center;gap:5px}
+  .mini-lbl .mini-in{padding:5px 7px}
   .acct-dept{font-size:12px;font-weight:800;color:var(--brand);margin:14px 0 6px;
     display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:5px}
   .acct-group:first-child .acct-dept{margin-top:2px}
@@ -481,9 +486,10 @@
     <div class="panel"><h2 class="dash-h">⏰ Due soon <span id="due_n"></span></h2><div id="dl_due"></div></div>
   </div>
   <!-- Upload: submit a document/facts for review (separate from the KB library) -->
-  <div class="panel demo-hide" id="uploadPanel" hidden data-view="knowledge">
-    <div class="cardhead"><h2 class="dash-h" style="margin:0">Upload a document <span class="rolechip" id="upRoleChip" style="background:#0f3d57">contributor</span></h2></div>
-    <div class="note" style="margin:0 0 10px">Submit a document or facts for the knowledge base. Private uploads are <strong>submitted for review</strong> — they aren’t used in any draft until a reviewer approves them (see the review queue under <strong>Knowledge base</strong>). Tag it to a project/scheme to scope it.</div>
+  <div class="panel" id="uploadPanel" hidden data-view="knowledge">
+    <div class="cardhead"><h2 class="dash-h" style="margin:0">Upload to the knowledge base <span class="rolechip" id="upRoleChip" style="background:#0f3d57">contributor</span></h2></div>
+    <div class="note" style="margin:0 0 10px">Add relevant information for the auto-drafter to quote and cite — paste text or upload a file (PDF, Word, text, HTML). Uploads are <strong>submitted for review</strong> and aren’t used in any draft until a reviewer approves them (see the review queue below). Tag it to a project/scheme to scope it.</div>
+    <div class="demo-note">Read-only demo — this shows how a department uploads relevant information; submitting is disabled here.</div>
     <div class="grid2">
       <div><label>Title</label><input id="kb_title" placeholder="e.g. Traffic filter exemptions 2026" /></div>
       <div><label>Source URL (optional)</label><input id="kb_url" placeholder="https://… (for the citation)" /></div>
@@ -576,9 +582,26 @@
   <div class="panel" id="inboxPanel">
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">FOI inbox <span id="inboxCount" class="count" hidden>0</span></h2>
-      <button class="ghost small" id="pollBtn" onclick="pollInbox()">Check inbox</button>
+      <span style="display:flex;gap:8px;align-items:center">
+        <button class="ghost small" id="newReqBtn" onclick="openManualEntry()">+ New FOI request</button>
+        <button class="ghost small" id="pollBtn" onclick="pollInbox()">Check inbox</button>
+      </span>
     </div>
     <div class="note" id="inboxAddr">Monitoring the dedicated FOI mailbox…</div>
+    <!-- Inbox filter: by sender/subject, status, and received-date range -->
+    <div class="inbox-filter">
+      <input id="inboxSearch" class="mini-in" placeholder="Search sender or subject…" oninput="renderInbox()" />
+      <select id="inboxStatus" class="mini-in" onchange="renderInbox()">
+        <option value="">All statuses</option>
+        <option value="new">New</option>
+        <option value="imported">Logged as case</option>
+        <option value="linked">Linked</option>
+        <option value="dismissed">Dismissed</option>
+      </select>
+      <label class="mini-lbl">From <input id="inboxFrom" type="date" class="mini-in" onchange="renderInbox()" /></label>
+      <label class="mini-lbl">To <input id="inboxTo" type="date" class="mini-in" onchange="renderInbox()" /></label>
+      <button class="ghost small" onclick="clearInboxFilter()">Clear</button>
+    </div>
     <div class="maillist" id="inbox"><div class="empty">Loading…</div></div>
   </div>
   <!-- Case queue (email-style list) -->
@@ -586,7 +609,7 @@
     <div class="cardhead">
       <h2 class="dash-h" style="margin:0">Case queue <span id="queueCount" class="count" hidden>0</span>
         <span class="qfilter" id="queueFilter" hidden onclick="clearFilter()"></span></h2>
-      <span class="qfilter" id="manualToggle" onclick="toggleManual()">+ Log manually</span>
+      <span class="qfilter" id="manualToggle" onclick="toggleManual()">+ New FOI request</span>
     </div>
     <input id="queueSearch" placeholder="Search reference, subject or requester…" oninput="renderQueue()" style="margin-bottom:8px" />
     <div id="manualEntry" hidden>
@@ -733,6 +756,7 @@ function startApp(){
   document.body.classList.toggle("kb-only", !caseUser);
   document.getElementById("pollBtn").style.display = can("intake") ? "" : "none";
   document.getElementById("manualToggle").style.display = can("intake") ? "" : "none";
+  document.getElementById("newReqBtn").style.display = can("intake") ? "" : "none";
   if(caseUser){
     loadDashboard();
     loadAnalytics();
@@ -1368,6 +1392,7 @@ async function refreshKB(){
   finally{ btn.disabled=false; btn.textContent="Refresh now"; }
 }
 async function addKBDoc(){
+  if(me && me.demo){ toast("Uploading to the knowledge base is disabled in this public demo."); return; }
   const title=document.getElementById("kb_title").value.trim();
   const content=document.getElementById("kb_content").value.trim();
   const url=document.getElementById("kb_url").value.trim()||null;
@@ -1390,6 +1415,7 @@ async function apiUpload(path, formData){           // multipart — no JSON con
   return data;
 }
 async function uploadKBDoc(){
+  if(me && me.demo){ toast("Uploading to the knowledge base is disabled in this public demo."); return; }
   const inp=document.getElementById("kb_file");
   const files=inp.files ? Array.from(inp.files) : [];
   if(!files.length){ toast("Choose one or more files to upload."); return; }
@@ -1499,13 +1525,36 @@ function matchesFilter(it){
   return true;
 }
 
+let inboxItems=[];   // latest /inbox payload, filtered client-side in renderInbox
+
 async function loadInbox(){
-  const items=await api("/inbox");
+  inboxItems=await api("/inbox");
+  renderInbox();
+}
+function clearInboxFilter(){
+  ["inboxSearch","inboxStatus","inboxFrom","inboxTo"].forEach(id=>{const e=document.getElementById(id); if(e) e.value="";});
+  renderInbox();
+}
+function renderInbox(){
   const box=document.getElementById("inbox");
-  const newOnes=items.filter(m=>m.status==="new");
   const badge=document.getElementById("inboxCount");
+  const newOnes=inboxItems.filter(m=>m.status==="new");
   badge.textContent=newOnes.length; badge.hidden=newOnes.length===0;
-  if(!items.length){box.innerHTML='<div class="empty">No messages yet — click “Check inbox”.</div>';return;}
+  if(!inboxItems.length){box.innerHTML='<div class="empty">No messages yet — click “Check inbox”.</div>';return;}
+  // Apply the filter bar: text (sender/subject), status, and received-date range.
+  const q=(document.getElementById("inboxSearch")?.value||"").toLowerCase().trim();
+  const st=document.getElementById("inboxStatus")?.value||"";
+  const from=document.getElementById("inboxFrom")?.value||"";
+  const to=document.getElementById("inboxTo")?.value||"";
+  const items=inboxItems.filter(m=>{
+    if(st && m.status!==st) return false;
+    const day=(m.received_at||"").slice(0,10);
+    if(from && day<from) return false;
+    if(to && day>to) return false;
+    if(q && !`${m.from_name||""} ${m.from_email||""} ${m.subject||""}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!items.length){box.innerHTML='<div class="empty">No messages match the filter.</div>';return;}
   box.innerHTML="";
   for(const m of items){
     const open=expanded.has(m.id);
@@ -1545,7 +1594,7 @@ async function loadInbox(){
       ${open?`<div class="full">${escapeHtml(m.body)}</div>`:`<div class="snippet">${escapeHtml(snippet)}${m.body.length>120?"…":""}</div>`}
       ${actions}`;
     if(m.status==="new"||true){
-      div.onclick=()=>{ if(open)expanded.delete(m.id); else expanded.add(m.id); loadInbox(); };
+      div.onclick=()=>{ if(open)expanded.delete(m.id); else expanded.add(m.id); renderInbox(); };
     }
     box.appendChild(div);
   }
@@ -1709,7 +1758,14 @@ function closeDetail(){
   document.getElementById("backdrop").hidden=true;
   current=null; renderQueue();
 }
-function toggleManual(){ const m=document.getElementById("manualEntry"); m.hidden=!m.hidden; }
+function toggleManual(){ const m=document.getElementById("manualEntry"); m.hidden=!m.hidden; if(!m.hidden) document.getElementById("r_name").focus(); }
+// Open the manual FOI-request form (used by the "+ New FOI request" button in
+// the inbox header) and bring it into view.
+function openManualEntry(){
+  const m=document.getElementById("manualEntry"); m.hidden=false;
+  document.getElementById("queuePanel").scrollIntoView({behavior:"smooth", block:"start"});
+  document.getElementById("r_name").focus();
+}
 
 function setupPreview(){
   const prev=document.getElementById("preview");
