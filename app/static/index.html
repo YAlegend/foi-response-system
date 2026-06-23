@@ -529,7 +529,8 @@
     <div class="note demo-hide" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
     <div class="grid2 demo-hide">
       <div><label>Username</label><input id="nu_username" placeholder="e.g. childrens-services" /></div>
-      <div><label>Full name</label><input id="nu_fullname" placeholder="e.g. Children’s Services" /></div>
+      <div><label>Full name (person)</label><input id="nu_fullname" placeholder="e.g. Sarah Okafor" /></div>
+      <div><label>Email</label><input id="nu_email" type="email" placeholder="e.g. sarah.okafor@oxfordshire.gov.uk" /></div>
       <div><label>Role</label><select id="nu_role">
         <option value="department">department — upload documents</option>
         <option value="caseworker">caseworker</option>
@@ -1427,7 +1428,7 @@ async function loadUsers(){
     if(groups["__central"]) order.push("__central");
     const acct=u=>`<div class="qitem" style="cursor:default">
         <span class="pill" style="background:#0f3d57;color:#fff;border:0">${escapeHtml(u.role)}</span>
-        <span class="q-sub">${escapeHtml(u.full_name||u.username)} <span class="note">(${escapeHtml(u.username)})</span></span>
+        <span class="q-sub">${escapeHtml(u.full_name||u.username)} <span class="note">(${escapeHtml(u.username)})</span>${u.email?`<br><span class="note">✉ ${escapeHtml(u.email)}</span>`:""}</span>
         <span class="q-meta">${u.is_active?"active":"inactive"}</span></div>`;
     document.getElementById("usersList").innerHTML=order.map(k=>{
       const central=k==="__central";
@@ -1443,12 +1444,13 @@ async function addUser(){
   const password=document.getElementById("nu_password").value;
   const role=document.getElementById("nu_role").value;
   const full_name=document.getElementById("nu_fullname").value.trim();
+  const email=document.getElementById("nu_email").value.trim();
   const department=document.getElementById("nu_department").value.trim();
   if(!username||password.length<6){ toast("Enter a username and a password of at least 6 characters."); return; }
   const btn=document.getElementById("uAddBtn"); btn.disabled=true;
   try{
-    const u=await api("/admin/users","POST",{username,password,role,full_name,department});
-    ["nu_username","nu_password","nu_fullname","nu_department"].forEach(id=>document.getElementById(id).value="");
+    const u=await api("/admin/users","POST",{username,password,role,full_name,email,department});
+    ["nu_username","nu_password","nu_fullname","nu_email","nu_department"].forEach(id=>document.getElementById(id).value="");
     toast(`Created account “${u.username}” — ${u.role}${u.department?` · ${u.department}`:" · central"}.`);
     loadUsers();
   }catch(e){ toast(e.message); }
