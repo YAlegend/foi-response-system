@@ -254,7 +254,7 @@ def create_user(payload: schemas.UserCreateIn, db: Session = Depends(get_db),
         raise HTTPException(409, f"Username '{payload.username}' already exists.")
     return auth.create_user(db, username=payload.username, password=payload.password,
                             role=payload.role, full_name=payload.full_name,
-                            department=payload.department)
+                            department=payload.department, email=payload.email)
 
 
 @router.get("/knowledge-base/refresh", response_model=schemas.KnowledgeRefreshStatus)

@@ -26,6 +26,7 @@ class UserCreateIn(BaseModel):
     password: str = Field(..., min_length=6)
     role: str
     full_name: str = ""
+    email: str = ""
     department: str = ""
 
 
@@ -34,6 +35,7 @@ class UserSummary(BaseModel):
     id: int
     username: str
     full_name: str
+    email: str = ""
     role: str
     department: str = ""
     is_active: bool = True

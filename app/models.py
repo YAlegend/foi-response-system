@@ -148,6 +148,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(200), default="")
+    email: Mapped[str] = mapped_column(String(320), default="")
     password_hash: Mapped[str] = mapped_column(String(255))   # algo$iter$salt$hash
     role: Mapped[str] = mapped_column(String(20), default=Role.CASEWORKER.value)
     department: Mapped[str] = mapped_column(String(120), default="")  # for role=department

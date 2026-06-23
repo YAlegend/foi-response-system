@@ -48,6 +48,7 @@ _ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
     ],
     "users": [
         ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),
+        ("email", "VARCHAR(320) NOT NULL DEFAULT ''"),
     ],
     "knowledge_docs": [
         ("department", "VARCHAR(120) NOT NULL DEFAULT ''"),

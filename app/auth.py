@@ -91,10 +91,10 @@ def _utcnow() -> datetime:
 # --- User & session operations ------------------------------------------------
 
 def create_user(db: Session, *, username: str, password: str, role: str,
-                full_name: str = "", department: str = "") -> User:
+                full_name: str = "", department: str = "", email: str = "") -> User:
     user = User(username=username, full_name=full_name or username,
                 password_hash=hash_password(password), role=role,
-                department=department or "")
+                department=department or "", email=email or "")
     db.add(user)
     db.commit()
     db.refresh(user)
