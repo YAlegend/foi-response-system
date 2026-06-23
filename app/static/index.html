@@ -525,24 +525,30 @@
   <!-- Admin: department & user accounts -->
   <div class="panel" id="usersPanel" hidden style="margin-top:14px" data-view="settings">
     <div class="cardhead"><h2 class="dash-h" style="margin:0">Accounts <span class="rolechip" style="background:#0f3d57">admin</span></h2>
-      <span class="note" id="usersStats"></span></div>
-    <div class="note demo-hide" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
-    <div class="grid2 demo-hide">
-      <div><label>Username</label><input id="nu_username" placeholder="e.g. childrens-services" /></div>
-      <div><label>Full name (person)</label><input id="nu_fullname" placeholder="e.g. Sarah Okafor" /></div>
-      <div><label>Email</label><input id="nu_email" type="email" placeholder="e.g. sarah.okafor@oxfordshire.gov.uk" /></div>
-      <div><label>Role</label><select id="nu_role">
-        <option value="department">department — upload documents</option>
-        <option value="caseworker">caseworker</option>
-        <option value="manager">manager</option>
-        <option value="legal_ig">legal_ig</option>
-        <option value="foi_team">foi_team</option>
-        <option value="admin">admin</option>
-      </select></div>
-      <div><label>Department (for department role)</label><input id="nu_department" placeholder="e.g. Children’s Services" /></div>
-      <div><label>Password</label><input id="nu_password" type="password" placeholder="min 6 characters" /></div>
+      <span style="display:flex;gap:10px;align-items:center"><span class="note" id="usersStats"></span>
+        <button class="secondary small" id="newAccountBtn" onclick="toggleNewAccount()">+ New account</button></span></div>
+    <!-- Add-account form: collapsed by default; opened from "+ New account". -->
+    <div id="newAccountForm" hidden style="border:1px solid var(--line);border-radius:10px;padding:14px;margin:0 0 12px">
+      <div class="note" style="margin:0 0 8px">Create an account for each responsible department so they can sign in and upload their relevant documents.</div>
+      <div class="demo-note">Read-only demo — this shows how an administrator adds an account; creating one is disabled here.</div>
+      <div class="grid2">
+        <div><label>Username</label><input id="nu_username" placeholder="e.g. childrens-services" /></div>
+        <div><label>Full name (person)</label><input id="nu_fullname" placeholder="e.g. Sarah Okafor" /></div>
+        <div><label>Email</label><input id="nu_email" type="email" placeholder="e.g. sarah.okafor@oxfordshire.gov.uk" /></div>
+        <div><label>Role</label><select id="nu_role">
+          <option value="department">department — upload documents</option>
+          <option value="caseworker">caseworker</option>
+          <option value="manager">manager</option>
+          <option value="legal_ig">legal_ig</option>
+          <option value="foi_team">foi_team</option>
+          <option value="admin">admin</option>
+        </select></div>
+        <div><label>Department (for department role)</label><input id="nu_department" placeholder="e.g. Children’s Services" /></div>
+        <div><label>Password</label><input id="nu_password" type="password" placeholder="min 6 characters" /></div>
+      </div>
+      <div class="btnrow"><button id="uAddBtn" onclick="addUser()">Create account</button>
+        <button class="secondary" onclick="toggleNewAccount()">Cancel</button></div>
     </div>
-    <div class="btnrow demo-hide"><button id="uAddBtn" onclick="addUser()">Create account</button></div>
     <div class="maillist" id="usersList" style="max-height:28vh;margin-top:12px"></div>
   </div>
 
@@ -1439,7 +1445,13 @@ async function loadUsers(){
     }).join("");
   }catch(e){ /* ignore for non-admins */ }
 }
+function toggleNewAccount(){
+  const f=document.getElementById("newAccountForm");
+  f.hidden=!f.hidden;
+  if(!f.hidden) document.getElementById("nu_username").focus();
+}
 async function addUser(){
+  if(me && me.demo){ toast("Adding accounts is disabled in this public demo."); return; }
   const username=document.getElementById("nu_username").value.trim();
   const password=document.getElementById("nu_password").value;
   const role=document.getElementById("nu_role").value;
@@ -1452,6 +1464,7 @@ async function addUser(){
     const u=await api("/admin/users","POST",{username,password,role,full_name,email,department});
     ["nu_username","nu_password","nu_fullname","nu_email","nu_department"].forEach(id=>document.getElementById(id).value="");
     toast(`Created account “${u.username}” — ${u.role}${u.department?` · ${u.department}`:" · central"}.`);
+    document.getElementById("newAccountForm").hidden=true;   // collapse after adding
     loadUsers();
   }catch(e){ toast(e.message); }
   finally{ btn.disabled=false; }
