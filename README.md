@@ -352,3 +352,14 @@ hosting live casework (which needs IG sign-off).
 - This is a first implementation, not legal advice; exemption and public-interest
   decisions remain human judgements recorded against the case.
 ```
+
+## License
+
+This project is **source-available, not open source**. It is licensed under the
+**[PolyForm Noncommercial License 1.0.0](LICENSE.md)** — free to use, modify and
+share for **noncommercial purposes** (personal, research, education, and use by
+government/charitable/nonprofit organisations).
+
+**Commercial use requires a separate paid licence.** If you want to use this in a
+commercial product or service, or a for-profit company's operations, contact
+**arafatta.8583@gmail.com** to arrange a commercial licence. See [LICENSE.md](LICENSE.md).
