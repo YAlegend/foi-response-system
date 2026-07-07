@@ -17,7 +17,7 @@ def test_split_questions_prose_strips_boilerplate():
         "Dear FOI team,\n\n"
         "Please treat this as a request under the FOIA. We would like the total "
         "annual spend on home-to-school transport for SEND pupils in 2024/25.\n\n"
-        "Best,\nNewsdesk, The Hertford Mercury"
+        "Best,\nNewsdesk, The Oxford Mail"
     )
     qs = split_questions(body)
     # The greeting and sign-off are dropped; the request sentence is kept.

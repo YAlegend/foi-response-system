@@ -1,4 +1,4 @@
-"""Hertfordshire County Council — FOI Response System.
+"""Oxfordshire County Council — FOI Response System.
 
 A production-oriented backend implementing the eight-stage FOI workflow:
 intake -> triage -> retrieval & auto-draft -> (human review) -> update ->
