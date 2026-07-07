@@ -1,7 +1,7 @@
 """The dedicated FOI mailbox — intake source for the whole system.
 
 FOI requests are not submitted through a public web form; they arrive in a
-monitored inbox (e.g. ``foi@hertfordshire.gov.uk``). This module abstracts that
+monitored inbox (e.g. ``foi@oxfordshire.gov.uk``). This module abstracts that
 mailbox behind a small provider interface so the connector can be swapped
 without touching the rest of the app:
 
@@ -83,7 +83,7 @@ _STUB_POOL: list[dict] = [
     },
     {
         "uid": "stub-0003",
-        "from_name": "The Hertford Mercury",
+        "from_name": "The Oxford Mail",
         "from_email": "newsdesk@example-press.co.uk",
         "subject": "FOI: SEND home-to-school transport spend 2023-2025",
         "body": (
@@ -91,7 +91,7 @@ _STUB_POOL: list[dict] = [
             "We would like the total annual spend on home-to-school transport for "
             "children with special educational needs and disabilities (SEND) for "
             "the financial years 2023/24 and 2024/25, broken down by in-house vs "
-            "external provision.\n\nBest,\nNewsdesk, The Hertford Mercury"
+            "external provision.\n\nBest,\nNewsdesk, The Oxford Mail"
         ),
     },
     {

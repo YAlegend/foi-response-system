@@ -14,7 +14,7 @@ QA_DOC = (
     "2. Anything else?\n"
     "Our response: No further information is held.\n"
     "Yours sincerely,\n"
-    "Information Governance Unit, Hertfordshire County Council\n"
+    "Information Governance Unit, Oxfordshire County Council\n"
 )
 
 
@@ -29,7 +29,7 @@ def test_snippet_returns_answer_not_question_or_scaffolding():
     # sign-off win; question-matching now returns the actual answer.
     assert "41,300" in snip
     assert "?" not in snip                      # not the question
-    assert "Hertfordshire County Council" not in snip   # not the sign-off
+    assert "Oxfordshire County Council" not in snip   # not the sign-off
     assert "Subject:" not in snip and "Our response:" not in snip
 
 
@@ -41,7 +41,7 @@ def test_snippet_is_word_aligned():
 
 
 def test_snippet_falls_back_for_unstructured_text():
-    doc = ("Hertfordshire maintains around 3,200 miles of road. "
+    doc = ("Oxfordshire maintains around 3,200 miles of road. "
            "Potholes can be reported online and assessed against criteria.")
     snip = _snip_for("How many miles of road are maintained?", doc)
     assert "3,200 miles" in snip

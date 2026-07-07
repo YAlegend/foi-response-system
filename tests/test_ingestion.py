@@ -22,7 +22,7 @@ def test_extract_pdf_text_is_graceful_on_non_pdf():
 
 
 def test_pdf_title_prefers_first_substantial_line():
-    raw = "  \n2024/25 Annual Budget Report\nHertfordshire County Council\n..."
+    raw = "  \n2024/25 Annual Budget Report\nOxfordshire County Council\n..."
     assert _pdf_title(raw, "https://x/doc.pdf") == "2024/25 Annual Budget Report"
 
 

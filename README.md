@@ -1,4 +1,4 @@
-# Hertfordshire County Council — FOI Response System
+# Oxfordshire County Council — FOI Response System
 
 A production-oriented backend that implements the eight-stage FOI workflow from
 the architecture document: **intake → triage → retrieval & auto-draft → (human
@@ -60,7 +60,7 @@ clearly-marked seam in `app/auth.py` and keep the same roles/audit. Set
 ### Using the web UI
 
 This is an **internal caseworker tool**, not a public-facing portal. FOI requests
-arrive in a **dedicated mailbox** (`foi@hertfordshire.gov.uk` by default); the UI
+arrive in a **dedicated mailbox** (`foi@oxfordshire.gov.uk` by default); the UI
 is where the Information Governance Unit triages that mailbox and drives each
 request through the workflow.
 
