@@ -1,0 +1,235 @@
+<svg viewBox="0 0 1640 1180" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/>
+    </marker>
+    <linearGradient id="hdr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f3d57"/>
+      <stop offset="1" stop-color="#15506f"/>
+    </linearGradient>
+    <style>
+      .lbl{font-size:13px;fill:#0f172a}
+      .sub{font-size:11px;fill:#475569}
+      .stg{font-size:12px;font-weight:700;fill:#fff}
+      .tag{font-size:10px;font-weight:700;letter-spacing:.5px}
+      .edge{font-size:10.5px;fill:#475569;font-style:italic}
+      .secttl{font-size:12px;font-weight:700;fill:#334155;letter-spacing:1px}
+    </style>
+  </defs>
+
+  <rect width="1640" height="1180" fill="#f8fafc"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1640" height="64" fill="url(#hdr)"/>
+  <text x="32" y="30" font-size="22" font-weight="700" fill="#fff">Oxfordshire County Council — FOI Response System Architecture</text>
+  <text x="32" y="50" font-size="13" fill="#bfdbef">AI-assisted intake → drafting → human review → approval → sign-off → dispatch · FOIA 2000 / EIR 2004 compliant</text>
+
+  <!-- Legend -->
+  <g transform="translate(1090,16)">
+    <rect x="0" y="0" width="20" height="13" rx="3" fill="#1d6fb8"/><text x="26" y="11" font-size="11" fill="#e2eef7">System / AI</text>
+    <rect x="120" y="0" width="20" height="13" rx="3" fill="#d97706"/><text x="146" y="11" font-size="11" fill="#e2eef7">Human action</text>
+    <rect x="250" y="0" width="20" height="13" rx="3" fill="#7c3aed"/><text x="276" y="11" font-size="11" fill="#e2eef7">Compliance gate</text>
+    <rect x="400" y="0" width="20" height="13" rx="3" fill="#15803d"/><text x="426" y="11" font-size="11" fill="#e2eef7">Dispatch</text>
+  </g>
+  <g transform="translate(1090,38)">
+    <polygon points="10,0 20,7 10,14 0,7" fill="#fbbf24" stroke="#b45309"/><text x="26" y="11" font-size="11" fill="#e2eef7">Decision</text>
+  </g>
+
+  <!-- ===================== LEFT: CHANNELS ===================== -->
+  <text x="32" y="96" class="secttl">1 · INTAKE CHANNELS</text>
+  <g>
+    <rect x="32" y="106" width="200" height="150" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="48" y="130" class="lbl" font-weight="700">Requesters</text>
+    <text x="48" y="152" class="sub">• Residents</text>
+    <text x="48" y="170" class="sub">• Local businesses</text>
+    <text x="48" y="188" class="sub">• Stakeholders / journalists</text>
+    <line x1="48" y1="200" x2="216" y2="200" stroke="#e2e8f0"/>
+    <text x="48" y="220" class="sub">Channels: web form, email,</text>
+    <text x="48" y="236" class="sub">post (scanned), WhatDoTheyKnow</text>
+  </g>
+
+  <!-- ===================== CENTRE FLOW ===================== -->
+  <!-- helper note: central column x ~ 600, width 360 -->
+
+  <!-- Stage 1 Intake -->
+  <g transform="translate(420,106)">
+    <rect width="360" height="74" rx="10" fill="#1d6fb8"/>
+    <text x="16" y="24" class="tag" fill="#bfe0f7">STAGE 1 · INTAKE &amp; REGISTRATION</text>
+    <text x="16" y="46" class="stg">Register request · assign reference · log receipt</text>
+    <text x="16" y="64" font-size="11" fill="#d6ebfa">Starts 20-working-day clock · de-duplicate · acknowledge</text>
+  </g>
+  <line x1="232" y1="160" x2="412" y2="150" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- Stage 2 Triage AI -->
+  <g transform="translate(420,206)">
+    <rect width="360" height="86" rx="10" fill="#1d6fb8"/>
+    <text x="16" y="24" class="tag" fill="#bfe0f7">STAGE 2 · AI TRIAGE &amp; CLASSIFICATION</text>
+    <text x="16" y="46" class="stg">Classify topic · identify owning department(s)</text>
+    <text x="16" y="64" font-size="11" fill="#d6ebfa">Detect FOIA vs EIR · flag SAR/business-as-usual · spot</text>
+    <text x="16" y="80" font-size="11" fill="#d6ebfa">potential exemptions, cost (s.12) &amp; vexatious (s.14) risk</text>
+  </g>
+  <line x1="600" y1="180" x2="600" y2="204" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- Stage 3 Retrieval + auto-draft -->
+  <g transform="translate(420,318)">
+    <rect width="360" height="92" rx="10" fill="#1d6fb8"/>
+    <text x="16" y="24" class="tag" fill="#bfe0f7">STAGE 3 · KNOWLEDGE RETRIEVAL &amp; AUTO-DRAFT</text>
+    <text x="16" y="46" class="stg">RAG search across systems → draft response</text>
+    <text x="16" y="64" font-size="11" fill="#d6ebfa">Disclosure log, SharePoint/EDRMS, case &amp; finance</text>
+    <text x="16" y="80" font-size="11" fill="#d6ebfa">systems · every claim cited to a source document</text>
+  </g>
+  <line x1="600" y1="292" x2="600" y2="316" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- Decision: info found? -->
+  <g transform="translate(490,440)">
+    <polygon points="110,0 220,70 110,140 0,70" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/>
+    <text x="110" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="#7c2d12">Sufficient,</text>
+    <text x="110" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#7c2d12">confident info</text>
+    <text x="110" y="98" text-anchor="middle" font-size="13" font-weight="700" fill="#7c2d12">found?</text>
+  </g>
+  <line x1="600" y1="410" x2="600" y2="438" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- NO branch -> human review (right) -->
+  <line x1="710" y1="510" x2="980" y2="510" stroke="#b91c1c" stroke-width="1.6" marker-end="url(#arrowRed)"/>
+  <text x="730" y="500" class="edge" fill="#b91c1c">NO / low confidence / gaps</text>
+
+  <!-- Stage 4 Human review (department SME) -->
+  <g transform="translate(980,430)">
+    <rect width="350" height="160" rx="10" fill="#fff7ed" stroke="#d97706" stroke-width="1.5"/>
+    <text x="16" y="26" class="tag" fill="#b45309">STAGE 4 · DEPARTMENT HUMAN REVIEW</text>
+    <text x="16" y="48" class="lbl" font-weight="700">Subject-matter expert / Information Owner</text>
+    <text x="16" y="70" class="sub">• Locates &amp; supplies missing information</text>
+    <text x="16" y="88" class="sub">• Confirms accuracy &amp; completeness</text>
+    <text x="16" y="106" class="sub">• Adds context, redactions, attachments</text>
+    <text x="16" y="124" class="sub">• Recommends exemptions to apply</text>
+    <rect x="16" y="134" width="318" height="18" rx="4" fill="#fef3c7"/>
+    <text x="24" y="147" font-size="10.5" fill="#92400e">Task assigned + tracked against internal SLA milestone</text>
+  </g>
+
+  <!-- Human review -> update response (loops back into draft) -->
+  <g transform="translate(980,628)">
+    <rect width="350" height="64" rx="10" fill="#d97706"/>
+    <text x="16" y="24" class="tag" fill="#ffe8c2">STAGE 5 · UPDATE FOI RESPONSE</text>
+    <text x="16" y="46" class="stg">Merge SME input → regenerate clean draft</text>
+  </g>
+  <line x1="1155" y1="590" x2="1155" y2="626" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- YES branch -> compliance gate down -->
+  <line x1="600" y1="580" x2="600" y2="628" stroke="#475569" marker-end="url(#arrow)"/>
+  <text x="612" y="606" class="edge">YES</text>
+
+  <!-- update response feeds back into compliance gate -->
+  <path d="M980,660 C840,660 760,650 712,650" fill="none" stroke="#475569" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="770" y="642" class="edge">revised draft re-enters flow</text>
+
+  <!-- Compliance gate: exemptions & PIT -->
+  <g transform="translate(420,628)">
+    <rect width="360" height="118" rx="10" fill="#7c3aed"/>
+    <text x="16" y="24" class="tag" fill="#e9d5ff">STAGE 6 · COMPLIANCE &amp; EXEMPTIONS GATE</text>
+    <text x="16" y="46" class="stg">Apply exemptions · public interest test</text>
+    <text x="16" y="64" font-size="11" fill="#ede9fe">Absolute vs qualified exemptions · personal-data</text>
+    <text x="16" y="80" font-size="11" fill="#ede9fe">redaction (UK GDPR) · s.12 cost / s.14 vexatious</text>
+    <text x="16" y="98" font-size="11" fill="#ede9fe">PIT may extend deadline by up to +20 working days</text>
+  </g>
+  <line x1="600" y1="692" x2="600" y2="626" stroke="#475569" marker-end="url(#arrow)" transform="translate(0,0)"/>
+
+  <!-- Approve decision -->
+  <g transform="translate(490,772)">
+    <polygon points="110,0 220,60 110,120 0,60" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/>
+    <text x="110" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#7c2d12">Approved by</text>
+    <text x="110" y="74" text-anchor="middle" font-size="13" font-weight="700" fill="#7c2d12">dept manager?</text>
+  </g>
+  <line x1="600" y1="746" x2="600" y2="770" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- reject loops back to human review -->
+  <path d="M710,832 C870,832 1300,790 1330,600" fill="none" stroke="#b91c1c" stroke-dasharray="5 4" marker-end="url(#arrowRed)"/>
+  <text x="900" y="824" class="edge" fill="#b91c1c">changes requested → back to SME</text>
+
+  <!-- Stage 7 final sign-off -->
+  <g transform="translate(420,910)">
+    <rect width="360" height="74" rx="10" fill="#7c3aed"/>
+    <text x="16" y="24" class="tag" fill="#e9d5ff">STAGE 7 · FINAL SIGN-OFF</text>
+    <text x="16" y="46" class="stg">Senior officer / Legal &amp; IG authorisation</text>
+    <text x="16" y="64" font-size="11" fill="#ede9fe">Confirms exemptions defensible · qualified-person opinion if needed</text>
+  </g>
+  <line x1="600" y1="892" x2="600" y2="908" stroke="#475569" marker-end="url(#arrow)"/>
+  <text x="612" y="884" class="edge">APPROVED</text>
+
+  <!-- Stage 8 FOI team dispatch -->
+  <g transform="translate(420,1014)">
+    <rect width="360" height="92" rx="10" fill="#15803d"/>
+    <text x="16" y="24" class="tag" fill="#c6f0d4">STAGE 8 · FOI TEAM DISPATCH</text>
+    <text x="16" y="46" class="stg">FOI team issues response to requester</text>
+    <text x="16" y="64" font-size="11" fill="#dcfce7">Sends within 20 working days · attaches rights-of-appeal</text>
+    <text x="16" y="80" font-size="11" fill="#dcfce7">wording · publishes to disclosure log · closes case</text>
+  </g>
+  <line x1="600" y1="984" x2="600" y2="1012" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- Requester receives -->
+  <g transform="translate(32,1014)">
+    <rect width="200" height="92" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="16" y="26" class="lbl" font-weight="700">Requester receives</text>
+    <text x="16" y="48" class="sub">response + appeal rights</text>
+    <line x1="16" y1="58" x2="184" y2="58" stroke="#e2e8f0"/>
+    <text x="16" y="76" class="sub">Unhappy? → Internal review</text>
+    <text x="16" y="92" class="sub">then ICO (s.50)</text>
+  </g>
+  <line x1="418" y1="1060" x2="234" y2="1060" stroke="#475569" marker-end="url(#arrow)"/>
+
+  <!-- ===================== RIGHT: GOVERNANCE SPINE ===================== -->
+  <text x="980" y="730" class="secttl">GOVERNANCE &amp; SLA SPINE (all stages)</text>
+  <g transform="translate(980,740)">
+    <rect width="350" height="250" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="16" y="26" class="lbl" font-weight="700">Case Management &amp; Audit</text>
+    <text x="16" y="48" class="sub">• Single case record · full audit trail</text>
+    <text x="16" y="66" class="sub">• SLA clock: amber day 12, red day 17</text>
+    <text x="16" y="84" class="sub">• Auto-escalation on breach risk</text>
+    <text x="16" y="102" class="sub">• Fees / clarification notices pause clock</text>
+    <text x="16" y="120" class="sub">• Disclosure-log publishing</text>
+    <line x1="16" y1="132" x2="334" y2="132" stroke="#e2e8f0"/>
+    <text x="16" y="154" class="lbl" font-weight="700">Security &amp; Data Protection</text>
+    <text x="16" y="176" class="sub">• Role-based access · UK data residency</text>
+    <text x="16" y="194" class="sub">• PII redaction &amp; DPIA on AI use</text>
+    <text x="16" y="212" class="sub">• Human-in-the-loop on every disclosure</text>
+    <text x="16" y="230" class="sub">• Reporting to SIRO / ICO metrics</text>
+  </g>
+
+  <!-- Tech stack band -->
+  <text x="32" y="290" class="secttl">PLATFORM</text>
+  <g transform="translate(32,300)">
+    <rect width="360" height="120" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="14" y="24" class="lbl" font-weight="700">Technology layer</text>
+    <text x="14" y="44" class="sub">Intake API · workflow/BPM engine</text>
+    <text x="14" y="62" class="sub">LLM + RAG (vector index over council data)</text>
+    <text x="14" y="80" class="sub">Connectors: EDRMS, SharePoint, email,</text>
+    <text x="14" y="96" class="sub">case &amp; finance systems  (later phase)</text>
+    <text x="14" y="112" class="sub">Identity (SSO) · audit DB · monitoring</text>
+  </g>
+
+  <!-- PHASE 0 ingestion / bootstrap knowledge base -->
+  <text x="32" y="452" class="secttl">PHASE 0 · BOOTSTRAP KNOWLEDGE BASE</text>
+  <g transform="translate(32,462)">
+    <rect width="360" height="232" rx="10" fill="#fffaf0" stroke="#1d6fb8" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="14" y="26" class="lbl" font-weight="700" fill="#0f3d57">Public-data ingestion (before integration)</text>
+    <text x="14" y="48" class="sub">Source A — Council website (scrape/API):</text>
+    <text x="22" y="64" class="sub">services, policies, publication scheme, open data</text>
+    <text x="14" y="86" class="sub">Source B — Disclosure log &amp; published</text>
+    <text x="22" y="102" class="sub">FOI responses (iCasework / past answers)</text>
+    <line x1="14" y1="114" x2="346" y2="114" stroke="#e2e8f0"/>
+    <text x="14" y="134" class="lbl" font-weight="700" fill="#0f3d57">Builds two assets:</text>
+    <rect x="14" y="144" width="332" height="34" rx="5" fill="#e6f0f9"/>
+    <text x="22" y="165" font-size="11" fill="#15506f">① RAG knowledge base (grounding facts)</text>
+    <rect x="14" y="184" width="332" height="34" rx="5" fill="#f3e9fc"/>
+    <text x="22" y="205" font-size="11" fill="#5b21b6">② House-style / format library (response template)</text>
+  </g>
+
+  <!-- arrow: KB grounding -> Stage 3 retrieval -->
+  <polyline points="392,505 405,505 405,388 416,388" fill="none" stroke="#1d6fb8" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="44" y="436" class="edge" fill="#15506f">→ seeds RAG retrieval &amp; house-style drafting</text>
+
+  <!-- footer -->
+  <text x="32" y="1150" font-size="10.5" fill="#94a3b8">Statutory basis: Freedom of Information Act 2000 (s.10 — 20 working days; s.12 cost; s.14 vexatious; Part II exemptions; s.50 ICO) and Environmental Information Regulations 2004. AI assists; humans authorise all disclosures.</text>
+</svg>
